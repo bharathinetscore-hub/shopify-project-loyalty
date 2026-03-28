@@ -1,0 +1,187 @@
+const { getShopAccessToken } = require("../../../lib/shopify-token-store");
+
+function normalizeShopDomain(rawShop) {
+  if (!rawShop) return "";
+  const shop = String(rawShop).trim().toLowerCase();
+  const validShopPattern = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
+  return validShopPattern.test(shop) ? shop : "";
+}
+
+/**
+ * Ensures the storefront loader script tag is installed.
+ * @returns {Promise<{ created: boolean, skipped?: boolean, reason?: string }>}
+ *   - created: true if a new script tag was created
+ *   - skipped: true if we did not run (e.g. missing scope)
+ *   - reason: short reason when skipped
+ */
+async function ensureStorefrontScriptTag(shop, accessToken, appHost) {
+  const apiVersion = "2024-01";
+  const scriptSrc = `${appHost}/loader.js`;
+
+  const checkRes = await fetch(`https://${shop}/admin/api/${apiVersion}/script_tags.json`, {
+    headers: {
+      "X-Shopify-Access-Token": accessToken,
+      Accept: "application/json",
+    },
+  });
+  const checkBody = await checkRes.text().catch(() => "");
+  const checkData = (() => {
+    try {
+      return JSON.parse(checkBody || "{}");
+    } catch (err) {
+      return {};
+    }
+  })();
+
+  if (!checkRes.ok) {
+    if (checkRes.status === 403) {
+      return { created: false, skipped: true, reason: "read_script_tags scope not granted" };
+    }
+    throw new Error(`Unable to read ScriptTags (${checkRes.status}): ${checkBody || "no response body"}`);
+  }
+
+  const alreadyInstalled = (checkData.script_tags || []).some(
+    (tag) => String(tag?.src || "").replace(/\/+$/, "") === scriptSrc
+  );
+  if (alreadyInstalled) return { created: false };
+
+  const createRes = await fetch(`https://${shop}/admin/api/${apiVersion}/script_tags.json`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": accessToken,
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      script_tag: {
+        event: "onload",
+        src: scriptSrc,
+      },
+    }),
+  });
+
+  if (!createRes.ok) {
+    if (createRes.status === 403) {
+      return { created: false, skipped: true, reason: "write_script_tags scope not granted" };
+    }
+    const createData = await createRes.json().catch(() => ({}));
+    throw new Error(`Unable to create ScriptTag (${createRes.status}): ${JSON.stringify(createData)}`);
+  }
+
+  return { created: true };
+}
+
+/**
+ * Ensures orders/updated webhook exists. Requires read_orders (or similar) scope.
+ * @returns {Promise<{ created: boolean, skipped?: boolean, reason?: string }>}
+ */
+async function ensureOrdersUpdatedWebhook(shop, accessToken, appHost) {
+  const apiVersion = "2024-01";
+  const webhookAddress = `${appHost}/api/webhooks/orders-create`;
+
+  const listRes = await fetch(`https://${shop}/admin/api/${apiVersion}/webhooks.json`, {
+    headers: {
+      "X-Shopify-Access-Token": accessToken,
+      Accept: "application/json",
+    },
+  });
+  const listData = await listRes.json().catch(() => ({}));
+  if (!listRes.ok) {
+    throw new Error(`Unable to read webhooks (${listRes.status})`);
+  }
+
+  const exists = (listData.webhooks || []).some((webhook) => {
+    const topic = String(webhook?.topic || "").toLowerCase();
+    const address = String(webhook?.address || "").replace(/\/+$/, "");
+    return topic === "orders/updated" && address === webhookAddress;
+  });
+  if (exists) return { created: false };
+
+  const createRes = await fetch(`https://${shop}/admin/api/${apiVersion}/webhooks.json`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": accessToken,
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      webhook: {
+        topic: "orders/updated",
+        address: webhookAddress,
+        format: "json",
+      },
+    }),
+  });
+  if (!createRes.ok) {
+    const createData = await createRes.json().catch(() => ({}));
+    if (createRes.status === 422) {
+      const topicErr = createData?.errors?.topic?.[0] || "";
+      return {
+        created: false,
+        skipped: true,
+        reason: topicErr.includes("Invalid topic") ? "orders scope not granted" : topicErr || "webhook not allowed",
+      };
+    }
+    throw new Error(`Unable to create orders/updated webhook (${createRes.status}): ${JSON.stringify(createData)}`);
+  }
+  return { created: true };
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ success: false, message: "Method not allowed" });
+  }
+
+  const shop = normalizeShopDomain(req.query.shop);
+  const appHost = (
+    process.env.SHOPIFY_APP_URL ||
+    process.env.HOST ||
+    ""
+  ).replace(/\/+$/, "");
+  if (!shop) {
+    return res.status(400).json({ success: false, message: "Missing or invalid shop" });
+  }
+  if (!appHost) {
+    return res.status(500).json({ success: false, message: "Missing HOST env var" });
+  }
+
+  try {
+    const accessToken = await getShopAccessToken(shop);
+    if (!accessToken) {
+      return res.status(404).json({
+        success: false,
+        message: "Shop token not found. Reauthorize app once from Shopify admin.",
+      });
+    }
+
+    const scriptTagResult = await ensureStorefrontScriptTag(shop, accessToken, appHost);
+    const scriptTagCreated = scriptTagResult.created === true;
+    if (scriptTagResult.skipped && scriptTagResult.reason) {
+      console.warn("ensure-storefront-loader: script tag skipped —", scriptTagResult.reason);
+    }
+
+    const webhookResult = await ensureOrdersUpdatedWebhook(shop, accessToken, appHost).catch((error) => ({
+      created: false,
+      skipped: true,
+      reason: String(error?.message || error),
+    }));
+    const webhookCreated = webhookResult.created === true;
+    if (webhookResult.skipped && webhookResult.reason) {
+      console.warn("ensure-storefront-loader: orders webhook skipped —", webhookResult.reason);
+    }
+
+    return res.status(200).json({
+      success: true,
+      scriptTagCreated,
+      scriptTagSkipped: scriptTagResult.skipped === true,
+      scriptTagSkipReason: scriptTagResult.reason || null,
+      webhookCreated,
+      webhookSkipped: webhookResult.skipped === true,
+      webhookSkipReason: webhookResult.reason || null,
+      webhookError: webhookResult.reason || null,
+    });
+  } catch (error) {
+    console.error("ensure-storefront-loader error:", error);
+    return res.status(500).json({ success: false, message: "Failed to ensure storefront loader" });
+  }
+}

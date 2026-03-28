@@ -1,0 +1,14 @@
+api_version = "2025-10"
+
+[[extensions]]
+name = "Checkout Loyalty Message"
+handle = "netscore-loyalty-checkout-message"
+uid = "f333a7aa-5d62-1be3-3bd5-fd0de1746f9e40619468"
+type = "ui_extension"
+
+[[extensions.targeting]]
+target = "purchase.checkout.block.render"
+module = "./src/main.js"
+
+[extensions.capabilities]
+network_access = true

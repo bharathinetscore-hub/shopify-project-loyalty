@@ -1,0 +1,26 @@
+{
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "database": "shopify_loyalty_database",
+            "name": "postgress",
+            "username": "postgress",
+            "password": "Netscore@2025"
+        },
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "shopify_loyalty_database",
+            "database": "shopify_loyalty_database",
+            "username": "postgres",
+            "password": "Netscore@2025"
+        }
+    ]
+}

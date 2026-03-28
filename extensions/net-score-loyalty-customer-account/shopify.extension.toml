@@ -1,0 +1,14 @@
+api_version = "2025-10"
+
+[[extensions]]
+name = "Customer Account Loyalty Section"
+handle = "netscore-loyalty-customer-account-profile"
+uid = "05b51913-ebff-eb67-120b-b5d219d107af7eb06252"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/main.js"
+target = "customer-account.profile.block.render"
+
+[extensions.capabilities]
+network_access = true

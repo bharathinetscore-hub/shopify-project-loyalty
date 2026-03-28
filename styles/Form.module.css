@@ -1,0 +1,232 @@
+.pageBg {
+  min-height: 100vh;
+  background: #f6f6f7;
+  padding-top: 60px;
+  display: flex;
+  justify-content: center;
+}
+
+.mainWrapper {
+  width: 100%;
+  max-width: 900px;
+}
+
+.loginTitle {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  color: #202223;
+}
+
+.radioRow {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 25px;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: #202223;
+  cursor: pointer;
+}
+
+.radioLabel input {
+  accent-color: #000;
+  width: 16px;
+  height: 16px;
+}
+
+/* Inner Grey Form Container */
+.formContainer {
+  background: #f9fafb;
+  border: 1px solid #dfe3e8;
+  border-radius: 12px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Form Title */
+.formTitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #202223;
+}
+
+/* Full Width Button */
+.fullWidthBtn {
+  margin-top: 20px;
+  background: linear-gradient(180deg, #2c2c2c 0%, #000 100%);
+  color: #fff;
+  border: none;
+  padding: 14px 0;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: 0.2s ease;
+}
+
+.fullWidthBtn:hover {
+  opacity: 0.9;
+}
+/* Dashboard Layout */
+
+.dashboardWrapper {
+  display: flex;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+/* Expiry Badge */
+.expiryBadge {
+  display: block;
+  background: #d1fae5;
+  color: #047857;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: #fff;
+  border: 1px solid #dfe3e8;
+  border-radius: 12px;
+  padding: 20px 0;
+}
+
+.sidebarItem {
+  padding: 12px 20px;
+  font-size: 14px;
+  color: #1a1a1a;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.sidebarItem:hover {
+  background: #f1f2f4;
+  color: #b49090;
+}
+
+.sidebarItemActive {
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 6px;
+  margin: 0 10px;
+}
+
+/* Main Panel */
+.panel {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #dfe3e8;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+/* User Info Rows */
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #edf0f2;
+  font-size: 15px;
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+}
+
+.infoLabel {
+  font-weight: 600;
+  color: #202223;
+}
+
+.infoValue {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #374151;
+}
+
+.eyeBtn {
+  cursor: pointer;
+  font-size: 16px;
+  border: none;
+  background: none;
+}
+.logoutBtn {
+  background: #d82c0d;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.logoutBtn:hover {
+  opacity: 0.9;
+}
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.formGroup label {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.formGroup input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+/* Loyalty Tiers Table */
+
+.tiersTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.tiersTable th,
+.tiersTable td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.tiersTable th {
+  background: #f5f6f7;
+  font-weight: 600;
+  text-align: left;
+}
+
+.tiersTable input {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Outline button */
+
+.outlineBtn {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+}

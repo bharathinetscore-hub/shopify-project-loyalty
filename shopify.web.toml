@@ -1,0 +1,14 @@
+type = "backend"
+name = "web"
+port = 3000
+
+[commands]
+dev = "npm run dev"
+build = "npm run build"
+start = "npm run start"
+
+[commands.serve]
+command = "npm run start"
+
+
+webhooks_path = "/api/webhooks"

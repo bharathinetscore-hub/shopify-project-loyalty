@@ -1,0 +1,37 @@
+{
+  "name": "shopfy-project",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev:next": "next dev -p 3000",
+    "deploy:release": "shopify app deploy --config shopify.app.toml --allow-updates --verbose",
+    "dev:release": "npm run deploy:release && shopify app dev --config shopify.app.toml --verbose",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node server.js",
+    "build": "next build",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@preact/signals": "^2.8.1",
+    "@shopify/app-bridge": "^3.7.11",
+    "@shopify/app-bridge-react": "^4.2.10",
+    "@shopify/polaris": "^13.9.5",
+    "@shopify/ui-extensions": "2025.10.13",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.3.1",
+    "isomorphic-fetch": "^3.0.0",
+    "next": "^14.2.0",
+    "pg": "^8.18.0",
+    "pg-hstore": "^2.3.4",
+    "preact": "^10.28.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sequelize": "^6.37.7"
+  },
+  "devDependencies": {
+    "sequelize-cli": "^6.6.5"
+  }
+}
