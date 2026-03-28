@@ -2,7 +2,7 @@
 
 client_id = "2ca5fcb270cb44a4846adeed6ec2f4d0"
 name = "NetScore Loyalty Rewards"
-application_url = "https://colony-affiliated-hobby-transition.trycloudflare.com"
+application_url = "https://shopify-project-loyalty.onrender.com"
 embedded = true
 handle = "netscore-loyalty-rewards"
 
@@ -20,5 +20,6 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://colony-affiliated-hobby-transition.trycloudflare.com/auth/callback"
+  "https://shopify-project-loyalty.onrender.com/auth/callback",
+  "https://shopify-project-loyalty.onrender.com/api/auth/shopify-callback"
 ]
