@@ -431,8 +431,8 @@ export default async function handler(req, res) {
     );
 
     const features = featuresRes.rows[0] || null;
-    const globalLoyaltyEnabled =
-      features === null ? true : Boolean(features?.loyalty_eligible);
+    // Keep customer-account and checkout extensions visible for all users.
+    const globalLoyaltyEnabled = true;
     const customerLookup = await loadCustomerEligibility(
       customerIdRaw,
       customerIdParsed,
@@ -445,7 +445,8 @@ export default async function handler(req, res) {
       loyaltyTiers
     );
     const giftCardConfig = await loadGiftCardConfig();
-    const customerEligible = Boolean(customerLookup?.eligible);
+    // Keep customer-account and checkout extensions visible for all users.
+    const customerEligible = true;
     const visible = true;
 
     return res.status(200).json({
