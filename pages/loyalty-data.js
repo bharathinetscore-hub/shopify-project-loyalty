@@ -2004,7 +2004,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       <LegacyCard sectioned>
         <div style={ui.sectionHeaderRow}>
           <div>
-            <h2 style={ui.sectionTitle}>Loyalty Product Selection</h2>
+            <h2 style={ui.sectionTitle}>Loyalty Product Selection for test purpose</h2>
             <p style={ui.sectionSubtitle}>
               Search and select products from Shopify to configure loyalty settings.
             </p>
