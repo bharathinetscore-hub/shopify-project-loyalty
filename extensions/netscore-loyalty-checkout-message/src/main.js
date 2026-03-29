@@ -9,6 +9,15 @@ import {
 } from "@shopify/ui-extensions/checkout/preact";
 
 function resolveApiBase() {
+  const liveOrigin =
+    typeof window !== "undefined" && window.location?.origin
+      ? String(window.location.origin)
+      : "";
+
+  if (/^https:\/\/([a-z0-9-]+\.)trycloudflare\.com$/i.test(liveOrigin)) {
+    return liveOrigin.replace(/\/$/, "");
+  }
+
   const envBase =
     (typeof process !== "undefined" &&
       (process.env?.HOST ||

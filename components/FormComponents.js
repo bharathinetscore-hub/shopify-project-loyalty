@@ -52,7 +52,7 @@ export function NetsuiteForm() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data?.error || "Login failed");
+        alert(data?.message || data?.error || "Login failed");
       } else {
         window.localStorage.setItem("lmpUser", JSON.stringify(data?.user || {}));
         const query = getEmbeddedQueryString();
@@ -112,7 +112,7 @@ export function LoyaltyForm() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data?.error || "Login failed");
+        alert(data?.message || data?.error || "Login failed");
       } else {
         window.localStorage.setItem("lmpUser", JSON.stringify(data?.user || {}));
         const query = getEmbeddedQueryString();

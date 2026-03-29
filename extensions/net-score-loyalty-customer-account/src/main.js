@@ -12,6 +12,15 @@ const loyaltyTabs = [
 ];
 
 function resolveApiBase() {
+  const liveOrigin =
+    typeof window !== "undefined" && window.location?.origin
+      ? String(window.location.origin)
+      : "";
+
+  if (/^https:\/\/([a-z0-9-]+\.)trycloudflare\.com$/i.test(liveOrigin)) {
+    return liveOrigin.replace(/\/$/, "");
+  }
+
   const envBase =
     (typeof process !== "undefined" &&
       (process.env?.HOST ||
@@ -21,12 +30,6 @@ function resolveApiBase() {
     (typeof window !== "undefined" && window.__SHOPIFY_APP_URL__);
 
   if (envBase) return String(envBase).replace(/\/$/, "");
-  if (typeof window !== "undefined" && window.location?.origin) {
-    const origin = String(window.location.origin);
-    if (/^https:\/\/([a-z0-9-]+\.)trycloudflare\.com$/i.test(origin)) {
-      return origin;
-    }
-  }
   return "";
 }
 

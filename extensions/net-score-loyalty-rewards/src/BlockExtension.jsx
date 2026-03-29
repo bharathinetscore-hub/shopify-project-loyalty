@@ -4,6 +4,15 @@ import { useState, useEffect } from "preact/hooks";
 
 // Prefer the live origin (handles whichever tunnel the iframe is loaded from).
 function resolveApiBase() {
+  const liveOrigin =
+    typeof window !== "undefined" && window.location?.origin
+      ? String(window.location.origin)
+      : "";
+
+  if (/^https:\/\/([a-z0-9-]+\.)trycloudflare\.com$/i.test(liveOrigin)) {
+    return liveOrigin.replace(/\/$/, "");
+  }
+
   const envBase =
     (typeof process !== "undefined" &&
       (process.env?.SHOPIFY_APP_URL ||
@@ -15,15 +24,6 @@ function resolveApiBase() {
   if (envBase) {
     return String(envBase).replace(/\/$/, "");
   }
-
-  try {
-    if (typeof window !== "undefined" && window.location?.origin) {
-      const origin = String(window.location.origin);
-      if (/^https:\/\/([a-z0-9-]+\.)trycloudflare\.com$/i.test(origin)) {
-        return origin;
-      }
-    }
-  } catch {}
 
   return "";
 }
