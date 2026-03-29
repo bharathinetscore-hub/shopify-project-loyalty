@@ -502,7 +502,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     { id: "events", content: "Events" },
     { id: "items", content: "Items" },
     { id: "giftcards", content: "Giftcards" },
-    { id: "loyalty-config", content: "Loyalty Config" },
+    { id: "loyalty-config", content: "Loyalty Products" },
   ];
 
   const tabRoutes = [
