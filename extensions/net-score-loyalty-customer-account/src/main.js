@@ -79,13 +79,36 @@ async function getCustomerContext(runtimeApi) {
     runtimeApi?.buyerIdentity?.customer?.email,
     globalThis?.shopify?.customer?.email,
   ];
+  const firstNameCandidates = [
+    runtimeApi?.authenticatedAccount?.customer?.firstName,
+    runtimeApi?.customer?.firstName,
+    runtimeApi?.buyerIdentity?.customer?.firstName,
+    globalThis?.shopify?.customer?.firstName,
+  ];
+  const lastNameCandidates = [
+    runtimeApi?.authenticatedAccount?.customer?.lastName,
+    runtimeApi?.customer?.lastName,
+    runtimeApi?.buyerIdentity?.customer?.lastName,
+    globalThis?.shopify?.customer?.lastName,
+  ];
+  const displayNameCandidates = [
+    runtimeApi?.authenticatedAccount?.customer?.displayName,
+    runtimeApi?.customer?.displayName,
+    runtimeApi?.buyerIdentity?.customer?.displayName,
+    globalThis?.shopify?.customer?.displayName,
+  ];
 
   const customerIdRaw = idCandidates.map(cleanText).find(Boolean) || "";
   const customerEmail = emailCandidates.map(cleanText).find(Boolean) || "";
   const customerId = parseCustomerId(customerIdRaw);
+  const customerName =
+    displayNameCandidates.map(cleanText).find(Boolean) ||
+    [firstNameCandidates.map(cleanText).find(Boolean), lastNameCandidates.map(cleanText).find(Boolean)]
+      .filter(Boolean)
+      .join(" ");
 
-  if (customerId || customerEmail) {
-    return { customerIdRaw, customerId, customerEmail };
+  if (customerId || customerEmail || customerName) {
+    return { customerIdRaw, customerId, customerEmail, customerName };
   }
 
   try {
@@ -103,13 +126,14 @@ async function getCustomerContext(runtimeApi) {
         customerIdRaw: sub,
         customerId: parseCustomerId(sub),
         customerEmail: email,
+        customerName: cleanText(payload?.name || ""),
       };
     }
   } catch {
     // no-op
   }
 
-  return { customerIdRaw: "", customerId: "", customerEmail: "" };
+  return { customerIdRaw: "", customerId: "", customerEmail: "", customerName: "" };
 }
 
 function LoyaltyRewardsProfileSection({ runtimeApi }) {
@@ -122,12 +146,16 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     customerIdRaw: "",
     customerId: "",
     customerEmail: "",
+    customerName: "",
   });
   const [giftCardPoints, setGiftCardPoints] = useState("");
   const [giftCardReceiverEmail, setGiftCardReceiverEmail] = useState("");
   const [giftCardError, setGiftCardError] = useState("");
   const [giftCardSuccess, setGiftCardSuccess] = useState("");
   const [giftCardSubmitting, setGiftCardSubmitting] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState("");
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [data, setData] = useState({
     labels: {},
     loyaltyPointsEarned: {
@@ -370,6 +398,63 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       setGiftCardError(err?.message || "Failed to generate gift card");
     } finally {
       setGiftCardSubmitting(false);
+    }
+  }
+
+  async function handleSaveProfile() {
+    setProfileError("");
+    setProfileSuccess("");
+
+    if (!API_BASE) {
+      setProfileError("Missing app URL for extension API");
+      return;
+    }
+
+    if (!customerContext?.customerId) {
+      setProfileError("Customer account could not be identified.");
+      return;
+    }
+
+    if (!cleanText(birthday) || !cleanText(anniversary)) {
+      setProfileError("Birthday and Anniversary Date are required.");
+      return;
+    }
+
+    setProfileSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/loyalty/save-customer-profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          customerId: customerContext.customerId,
+          customerEmail: customerContext.customerEmail,
+          customerName: customerContext.customerName,
+          birthday: cleanText(birthday),
+          anniversary: cleanText(anniversary),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || payload?.message || "Failed to save profile");
+      }
+
+      const awardedEvents = Array.isArray(payload?.awardedEvents) ? payload.awardedEvents : [];
+      const awardedPoints = toNumber(payload?.customer?.newPointsAwarded, 0);
+      const successMessage = awardedEvents.length
+        ? `Profile saved. Awarded ${awardedPoints.toFixed(2)} loyalty points for ${awardedEvents
+            .map((item) => item.name)
+            .join(" and ")}.`
+        : "Profile saved. Birthday and anniversary points were already awarded earlier.";
+
+      setProfileSuccess(successMessage);
+      await loadData();
+    } catch (err) {
+      setProfileError(err?.message || "Failed to save profile");
+    } finally {
+      setProfileSubmitting(false);
     }
   }
 
@@ -666,16 +751,49 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           <s-date-field
             label="Birthday"
             value={birthday}
-            onInput={(event) => setBirthday(event.currentTarget.value)}
+            onInput={(event) => {
+              setBirthday(event.currentTarget.value);
+              setProfileError("");
+              setProfileSuccess("");
+            }}
           />
 
           <s-date-field
             label="Anniversary Date"
             value={anniversary}
-            onInput={(event) => setAnniversary(event.currentTarget.value)}
+            onInput={(event) => {
+              setAnniversary(event.currentTarget.value);
+              setProfileError("");
+              setProfileSuccess("");
+            }}
           />
 
-          <s-button variant="primary">Save</s-button>
+          {profileError ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="critical">{profileError}</s-text>
+            </s-box>
+          ) : null}
+
+          {profileSuccess ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="success">{profileSuccess}</s-text>
+            </s-box>
+          ) : null}
+
+          <s-button
+            variant="primary"
+            loading={profileSubmitting}
+            disabled={
+              profileSubmitting ||
+              loading ||
+              !customerContext?.customerId ||
+              !cleanText(birthday) ||
+              !cleanText(anniversary)
+            }
+            onClick={handleSaveProfile}
+          >
+            Save
+          </s-button>
         </s-stack>
       </s-box>
     );

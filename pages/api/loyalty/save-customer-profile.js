@@ -1,7 +1,43 @@
 import pool from "../../../db/db";
 
-async function ensureCustomersTable() {
-  await pool.query(`
+function cleanText(value) {
+  return String(value || "").trim();
+}
+
+function parseCustomerId(value) {
+  return String(value || "").match(/\d+/)?.[0] || "";
+}
+
+function normalizeDate(input) {
+  const raw = String(input || "").trim();
+  if (!raw) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  return raw;
+}
+
+function toNumber(input, fallback = 0) {
+  const parsed = Number(input);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeWholeNumber(input, fallback = 0) {
+  return Math.max(0, Math.floor(toNumber(input, fallback)));
+}
+
+function formatDateOnly(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildPointsExpirationDate(days) {
+  const safeDays = normalizeWholeNumber(days, 0);
+  if (!safeDays) return null;
+  const nextDate = new Date();
+  nextDate.setDate(nextDate.getDate() + safeDays);
+  return formatDateOnly(nextDate);
+}
+
+async function ensureCustomersTable(db) {
+  await db.query(`
     CREATE TABLE IF NOT EXISTS netst_customers_table (
       id BIGSERIAL PRIMARY KEY,
       customer_id TEXT NOT NULL UNIQUE,
@@ -13,7 +49,7 @@ async function ensureCustomersTable() {
   `);
 
   const ensureColumn = async (columnName, definitionSql) => {
-    const check = await pool.query(
+    const check = await db.query(
       `
       SELECT 1
       FROM information_schema.columns
@@ -24,33 +60,153 @@ async function ensureCustomersTable() {
       `,
       [columnName]
     );
+
     if (!check.rows.length) {
-      await pool.query(`ALTER TABLE netst_customers_table ADD COLUMN ${definitionSql};`);
+      await db.query(`ALTER TABLE netst_customers_table ADD COLUMN ${definitionSql};`);
     }
   };
 
   await ensureColumn("customer_birthday", "customer_birthday DATE NULL");
   await ensureColumn("customer_anniversary", "customer_anniversary DATE NULL");
-  await ensureColumn("customer_eligible_for_loyalty", "customer_eligible_for_loyalty BOOLEAN NOT NULL DEFAULT false");
+  await ensureColumn(
+    "customer_eligible_for_loyalty",
+    "customer_eligible_for_loyalty BOOLEAN NOT NULL DEFAULT false"
+  );
   await ensureColumn("customer_referral_code", "customer_referral_code TEXT NULL");
   await ensureColumn("customer_used_referral_code", "customer_used_referral_code TEXT NULL");
   await ensureColumn("total_earned_points", "total_earned_points NUMERIC(12,2) NOT NULL DEFAULT 0");
-  await ensureColumn("total_redeemed_points", "total_redeemed_points NUMERIC(12,2) NOT NULL DEFAULT 0");
+  await ensureColumn(
+    "total_redeemed_points",
+    "total_redeemed_points NUMERIC(12,2) NOT NULL DEFAULT 0"
+  );
   await ensureColumn("available_points", "available_points NUMERIC(12,2) NOT NULL DEFAULT 0");
 }
 
-function normalizeDate(input) {
-  const raw = String(input || "").trim();
-  if (!raw) return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
-  return raw;
+async function ensureEventDetailsTable(db) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS netst_customer__event_details_table (
+      id BIGSERIAL PRIMARY KEY,
+      customer_id BIGINT NOT NULL,
+      date_created DATE DEFAULT NULL,
+      event_name VARCHAR(255) DEFAULT NULL,
+      points_earned NUMERIC(10,2) DEFAULT 0.00,
+      points_redeemed NUMERIC(10,2) DEFAULT 0.00,
+      points_left NUMERIC(10,2) DEFAULT 0.00,
+      transaction_id BIGINT DEFAULT NULL,
+      amount NUMERIC(10,2) DEFAULT 0.00,
+      gift_code VARCHAR(100) DEFAULT NULL,
+      receiver_email VARCHAR(255) DEFAULT NULL,
+      refer_friend_id BIGINT DEFAULT NULL,
+      comments TEXT DEFAULT NULL,
+      points_expiration_date DATE DEFAULT NULL,
+      points_expiration_days VARCHAR(255) DEFAULT NULL,
+      expired BOOLEAN DEFAULT FALSE,
+      points_type VARCHAR(10) DEFAULT 'positive',
+      created_at TIMESTAMP DEFAULT NULL,
+      updated_at TIMESTAMP DEFAULT NULL,
+      event_id INTEGER DEFAULT NULL
+    )
+  `);
 }
 
-function normalizeNumber(input) {
-  if (input === null || input === undefined || input === "") return 0;
-  const parsed = Number(input);
-  if (!Number.isFinite(parsed)) return 0;
-  return parsed;
+async function ensureEventsTable(db) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS netst_events_table (
+      id BIGSERIAL PRIMARY KEY,
+      ns_id TEXT NULL,
+      event_id TEXT NOT NULL UNIQUE,
+      event_name TEXT NOT NULL,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.query(`
+    ALTER TABLE netst_events_table
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
+  `);
+}
+
+async function ensureConfigTable(db) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS netst_loyalty_config_table (
+      id SERIAL PRIMARY KEY,
+      birthday_points NUMERIC(10,2) DEFAULT 0.00,
+      anniversary_points NUMERIC(10,2) DEFAULT 0.00,
+      points_expiration_days VARCHAR(255) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await db.query(`
+    ALTER TABLE netst_loyalty_config_table
+    ADD COLUMN IF NOT EXISTS birthday_points NUMERIC(10,2) DEFAULT 0.00
+  `);
+  await db.query(`
+    ALTER TABLE netst_loyalty_config_table
+    ADD COLUMN IF NOT EXISTS anniversary_points NUMERIC(10,2) DEFAULT 0.00
+  `);
+  await db.query(`
+    ALTER TABLE netst_loyalty_config_table
+    ADD COLUMN IF NOT EXISTS points_expiration_days VARCHAR(255) DEFAULT NULL
+  `);
+}
+
+async function loadProfileAwardConfig(db) {
+  const result = await db.query(
+    `
+      SELECT birthday_points, anniversary_points, points_expiration_days
+      FROM netst_loyalty_config_table
+      ORDER BY id DESC
+      LIMIT 1
+    `
+  );
+
+  const row = result.rows[0] || {};
+  return {
+    birthdayPoints: toNumber(row.birthday_points, 0),
+    anniversaryPoints: toNumber(row.anniversary_points, 0),
+    pointsExpirationDays: normalizeWholeNumber(row.points_expiration_days, 0),
+  };
+}
+
+async function loadEventDefinition(db, eventId) {
+  const result = await db.query(
+    `
+      SELECT event_id, event_name, is_active
+      FROM netst_events_table
+      WHERE event_id = $1
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [String(eventId)]
+  );
+
+  const row = result.rows[0] || null;
+  if (!row) return null;
+
+  return {
+    id: toNumber(row.event_id, eventId),
+    name: cleanText(row.event_name),
+    isActive: row.is_active !== false,
+  };
+}
+
+async function loadExistingAwards(db, customerId, eventIds) {
+  const result = await db.query(
+    `
+      SELECT event_id
+      FROM netst_customer__event_details_table
+      WHERE customer_id = $1
+        AND points_type = 'positive'
+        AND event_id = ANY($2::int[])
+    `,
+    [toNumber(customerId, 0), eventIds]
+  );
+
+  return new Set(result.rows.map((row) => toNumber(row.event_id, 0)));
 }
 
 export default async function handler(req, res) {
@@ -58,90 +214,236 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    await ensureCustomersTable();
+  const client = await pool.connect();
 
-    const customerId = String(req.body?.customerId || "").trim();
-    const eligibleForLoyalty = Boolean(req.body?.eligibleForLoyalty);
+  try {
+    await client.query("BEGIN");
+
+    await ensureCustomersTable(client);
+    await ensureEventDetailsTable(client);
+    await ensureEventsTable(client);
+    await ensureConfigTable(client);
+
+    const customerId = parseCustomerId(req.body?.customerId);
+    const customerEmail = cleanText(req.body?.customerEmail);
+    const requestedCustomerName = cleanText(req.body?.customerName);
     const birthday = normalizeDate(req.body?.birthday);
     const anniversary = normalizeDate(req.body?.anniversary);
-    const referralCode = String(req.body?.referralCode || "").trim();
-    const usedReferralCode = String(req.body?.usedReferralCode || "").trim();
-    const totalEarnedPoints = normalizeNumber(req.body?.totalEarnedPoints);
-    const totalRedeemedPoints = normalizeNumber(req.body?.totalRedeemedPoints);
-    const requestedAvailablePoints = normalizeNumber(req.body?.availablePoints);
-    const availablePoints =
-      req.body?.availablePoints === null || req.body?.availablePoints === undefined || req.body?.availablePoints === ""
-        ? totalEarnedPoints - totalRedeemedPoints
-        : requestedAvailablePoints;
 
     if (!customerId) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ error: "customerId is required" });
     }
 
-    const result = await pool.query(
+    if (!birthday || !anniversary) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Birthday and anniversary are required." });
+    }
+
+    const customerRes = await client.query(
       `
-      UPDATE netst_customers_table
-      SET
-        customer_eligible_for_loyalty = $2,
-        customer_birthday = $3,
-        customer_anniversary = $4,
-        customer_referral_code = $5,
-        customer_used_referral_code = $6,
-        total_earned_points = $7,
-        total_redeemed_points = $8,
-        available_points = $9,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE customer_id = $1
-      RETURNING
-        customer_id,
-        customer_name,
-        customer_email,
-        customer_birthday,
-        customer_anniversary,
-        customer_eligible_for_loyalty,
-        customer_referral_code,
-        customer_used_referral_code,
-        total_earned_points,
-        total_redeemed_points,
-        available_points
+        SELECT
+          customer_name,
+          customer_email,
+          total_earned_points,
+          total_redeemed_points,
+          available_points
+        FROM netst_customers_table
+        WHERE customer_id = $1
+        LIMIT 1
+      `,
+      [customerId]
+    );
+
+    const existingCustomer = customerRes.rows[0] || {};
+    const customerName =
+      requestedCustomerName ||
+      cleanText(existingCustomer.customer_name) ||
+      customerEmail ||
+      `Customer ${customerId}`;
+    const finalCustomerEmail = customerEmail || cleanText(existingCustomer.customer_email) || null;
+
+    const config = await loadProfileAwardConfig(client);
+    const birthdayEvent = await loadEventDefinition(client, 9);
+    const anniversaryEvent = await loadEventDefinition(client, 10);
+
+    if (!birthdayEvent?.name || !anniversaryEvent?.name) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: "Birthday and anniversary events are missing in netst_events_table for event IDs 9 and 10.",
+      });
+    }
+
+    const existingAwards = await loadExistingAwards(client, customerId, [9, 10]);
+    let totalEarnedPoints = toNumber(existingCustomer.total_earned_points, 0);
+    let totalRedeemedPoints = toNumber(existingCustomer.total_redeemed_points, 0);
+    let availablePoints = toNumber(existingCustomer.available_points, 0);
+    let newPointsAwarded = 0;
+    let transactionSeed = Date.now();
+
+    const awardedEvents = [];
+    const skippedEvents = [];
+    const profileEvents = [
+      {
+        eventId: birthdayEvent.id,
+        eventName: birthdayEvent.name,
+        points: config.birthdayPoints,
+        profileDate: birthday,
+      },
+      {
+        eventId: anniversaryEvent.id,
+        eventName: anniversaryEvent.name,
+        points: config.anniversaryPoints,
+        profileDate: anniversary,
+      },
+    ];
+
+    const pointsExpirationDate = buildPointsExpirationDate(config.pointsExpirationDays);
+    const pointsExpirationDaysValue =
+      config.pointsExpirationDays > 0 ? String(config.pointsExpirationDays) : null;
+
+    for (const event of profileEvents) {
+      if (existingAwards.has(event.eventId)) {
+        skippedEvents.push({
+          id: event.eventId,
+          name: event.eventName,
+          reason: "already_awarded",
+        });
+        continue;
+      }
+
+      const pointsEarned = toNumber(event.points, 0);
+      totalEarnedPoints += pointsEarned;
+      availablePoints = totalEarnedPoints - totalRedeemedPoints;
+      newPointsAwarded += pointsEarned;
+
+      await client.query(
+        `
+          INSERT INTO netst_customer__event_details_table (
+            customer_id,
+            date_created,
+            event_name,
+            points_earned,
+            points_redeemed,
+            points_left,
+            transaction_id,
+            amount,
+            gift_code,
+            receiver_email,
+            refer_friend_id,
+            comments,
+            points_expiration_date,
+            points_expiration_days,
+            expired,
+            points_type,
+            created_at,
+            updated_at,
+            event_id
+          )
+          VALUES (
+            $1, CURRENT_DATE, $2, $3, 0, $4, $5, 0, NULL, $6, NULL, $7, $8, $9, FALSE, 'positive', NOW(), NOW(), $10
+          )
+        `,
+        [
+          toNumber(customerId, 0),
+          event.eventName,
+          pointsEarned,
+          availablePoints,
+          transactionSeed++,
+          finalCustomerEmail,
+          `Profile saved for ${event.eventName} date ${event.profileDate}`,
+          pointsExpirationDate,
+          pointsExpirationDaysValue,
+          event.eventId,
+        ]
+      );
+
+      awardedEvents.push({
+        id: event.eventId,
+        name: event.eventName,
+        pointsEarned,
+      });
+    }
+
+    const saveCustomerRes = await client.query(
+      `
+        INSERT INTO netst_customers_table (
+          customer_id,
+          customer_name,
+          customer_email,
+          customer_birthday,
+          customer_anniversary,
+          customer_eligible_for_loyalty,
+          total_earned_points,
+          total_redeemed_points,
+          available_points,
+          updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, $8, CURRENT_TIMESTAMP)
+        ON CONFLICT (customer_id)
+        DO UPDATE SET
+          customer_name = EXCLUDED.customer_name,
+          customer_email = EXCLUDED.customer_email,
+          customer_birthday = EXCLUDED.customer_birthday,
+          customer_anniversary = EXCLUDED.customer_anniversary,
+          customer_eligible_for_loyalty = TRUE,
+          total_earned_points = EXCLUDED.total_earned_points,
+          total_redeemed_points = EXCLUDED.total_redeemed_points,
+          available_points = EXCLUDED.available_points,
+          updated_at = CURRENT_TIMESTAMP
+        RETURNING
+          customer_id,
+          customer_name,
+          customer_email,
+          customer_birthday,
+          customer_anniversary,
+          customer_eligible_for_loyalty,
+          total_earned_points,
+          total_redeemed_points,
+          available_points
       `,
       [
         customerId,
-        eligibleForLoyalty,
+        customerName,
+        finalCustomerEmail,
         birthday,
         anniversary,
-        referralCode || null,
-        usedReferralCode || null,
         totalEarnedPoints,
         totalRedeemedPoints,
         availablePoints,
       ]
     );
 
-    if (!result.rows.length) {
-      return res.status(404).json({ error: "Customer not found" });
-    }
+    await client.query("COMMIT");
 
-    const row = result.rows[0];
+    const row = saveCustomerRes.rows[0];
     return res.status(200).json({
       success: true,
+      message: "Customer profile saved successfully.",
+      awardedEvents,
+      skippedEvents,
       customer: {
         id: String(row.customer_id || ""),
-        name: String(row.customer_name || ""),
-        email: String(row.customer_email || ""),
+        name: cleanText(row.customer_name),
+        email: cleanText(row.customer_email),
         birthday: row.customer_birthday || null,
         anniversary: row.customer_anniversary || null,
         eligibleForLoyalty: Boolean(row.customer_eligible_for_loyalty),
-        referralCode: String(row.customer_referral_code || ""),
-        usedReferralCode: String(row.customer_used_referral_code || ""),
-        totalEarnedPoints: Number(row.total_earned_points || 0),
-        totalRedeemedPoints: Number(row.total_redeemed_points || 0),
-        availablePoints: Number(row.available_points || 0),
+        totalEarnedPoints: toNumber(row.total_earned_points, 0),
+        totalRedeemedPoints: toNumber(row.total_redeemed_points, 0),
+        availablePoints: toNumber(row.available_points, 0),
+        newPointsAwarded,
       },
     });
   } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // no-op
+    }
     console.error("save-customer-profile error:", error);
     return res.status(500).json({ error: "Failed to save customer profile" });
+  } finally {
+    client.release();
   }
 }
