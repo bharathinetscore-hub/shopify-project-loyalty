@@ -12,6 +12,7 @@ const loyaltyTabs = [
 ];
 
 function resolveApiBase() {
+  const PRODUCTION_API_BASE = "https://shopify-project-loyalty.onrender.com";
   const liveOrigin =
     typeof window !== "undefined" && window.location?.origin
       ? String(window.location.origin)
@@ -30,7 +31,7 @@ function resolveApiBase() {
     (typeof window !== "undefined" && window.__SHOPIFY_APP_URL__);
 
   if (envBase) return String(envBase).replace(/\/$/, "");
-  return "";
+  return PRODUCTION_API_BASE;
 }
 
 const API_BASE = resolveApiBase();

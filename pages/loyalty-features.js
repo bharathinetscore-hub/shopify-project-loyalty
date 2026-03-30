@@ -147,6 +147,8 @@ export default function LoyaltyFeaturesPage() {
             </Banner>
           </div>
         )}
+        <h3 style={{ margin: "8px 0 0", fontSize: 16, fontWeight: 700 }}>Features configuration</h3>
+
 
         <FormLayout>
           <FormLayout.Group>

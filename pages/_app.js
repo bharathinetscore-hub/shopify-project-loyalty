@@ -71,10 +71,10 @@ function MyApp({ Component, pageProps }) {
     try {
       const app = createApp(config);
       const items = [
-        AppLink.create(app, { label: "Loyalty Config", destination: "/loyalty-config" }),
+        AppLink.create(app, { label: "Products", destination: "/loyalty-config" }),
         AppLink.create(app, { label: "Events", destination: "/loyalty-events" }),
-        AppLink.create(app, { label: "Loyalty Customers", destination: "/loyalty-customers" }),
-        AppLink.create(app, { label: "Items", destination: "/loyalty-items" }),
+        AppLink.create(app, { label: "Loyalty Customers ", destination: "/loyalty-customers" }),
+        // AppLink.create(app, { label: "Items", destination: "/loyalty-items" }),
         AppLink.create(app, { label: "Giftcard Generated", destination: "/loyalty-giftcard-generated" }),
         AppLink.create(app, { label: "Features", destination: "/loyalty-features" }),
       ];

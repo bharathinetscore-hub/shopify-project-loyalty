@@ -213,19 +213,40 @@ function PaginatedTable({
   page,
   setPage,
   perPage = 3,
+  setPerPage = null,
   emptyLabel = "No records to display",
 }) {
   const totalPages = Math.max(1, Math.ceil((rows?.length || 0) / perPage));
   const safePage = Math.min(Math.max(1, page), totalPages);
   const start = (safePage - 1) * perPage;
   const pageRows = (rows || []).slice(start, start + perPage);
+  const perPageOptions = Array.from({ length: 20 }, (_, index) => {
+    const value = String(index + 1);
+    return { label: value, value };
+  });
 
   return (
     <>
       <Table columns={columns} rows={pageRows} emptyLabel={emptyLabel} />
       <div style={ui.paginationWrap}>
-        <div style={ui.paginationMeta}>
-          Page {safePage} of {totalPages} ({rows.length} item{rows.length === 1 ? "" : "s"})
+        <div style={{ ...ui.paginationBtns, flexWrap: "wrap" }}>
+          {setPerPage ? (
+            <div style={{ minWidth: 150 }}>
+              <Select
+                label="Rows per page"
+                labelHidden
+                options={perPageOptions}
+                value={String(perPage)}
+                onChange={(value) => {
+                  setPerPage(Number(value));
+                  setPage(1);
+                }}
+              />
+            </div>
+          ) : null}
+          <div style={ui.paginationMeta}>
+            Page {safePage} of {totalPages} ({rows.length} item{rows.length === 1 ? "" : "s"})
+          </div>
         </div>
         <div style={ui.paginationBtns}>
           <Button
@@ -305,6 +326,12 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   const [giftcardsPage, setGiftcardsPage] = useState(1);
   const [enabledItemsPage, setEnabledItemsPage] = useState(1);
   const [loyaltyProductsPage, setLoyaltyProductsPage] = useState(1);
+  const [customersPerPage, setCustomersPerPage] = useState(10);
+  const [eventsPerPage, setEventsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [giftcardsPerPage, setGiftcardsPerPage] = useState(10);
+  const [enabledItemsPerPage, setEnabledItemsPerPage] = useState(10);
+  const [loyaltyProductsPerPage, setLoyaltyProductsPerPage] = useState(10);
 
   function getEmbeddedQueryString(extraParams = {}) {
     if (typeof window === "undefined") return "";
@@ -1481,7 +1508,8 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
         ])}
         page={customersPage}
         setPage={setCustomersPage}
-        perPage={3}
+        perPage={customersPerPage}
+        setPerPage={setCustomersPerPage}
       />
 
       <Modal
@@ -1820,7 +1848,8 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
         )}
         page={eventsPage}
         setPage={setEventsPage}
-        perPage={3}
+        perPage={eventsPerPage}
+        setPerPage={setEventsPerPage}
       />
 
       <Modal
@@ -1954,7 +1983,8 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
         ])}
         page={itemsPage}
         setPage={setItemsPage}
-        perPage={3}
+        perPage={itemsPerPage}
+        setPerPage={setItemsPerPage}
       />
     </LegacyCard>
   );
@@ -1994,7 +2024,8 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
         rows={[]}
         page={giftcardsPage}
         setPage={setGiftcardsPage}
-        perPage={3}
+        perPage={giftcardsPerPage}
+        setPerPage={setGiftcardsPerPage}
       />
     </LegacyCard>
   );
@@ -2004,10 +2035,10 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       <LegacyCard sectioned>
         <div style={ui.sectionHeaderRow}>
           <div>
-            <h2 style={ui.sectionTitle}>Loyalty Product Selection for test purpose</h2>
-            <p style={ui.sectionSubtitle}>
+            <h2 style={ui.sectionTitle}>Loyalty Products</h2>
+            {/* <p style={ui.sectionSubtitle}>
               Search and select products from Shopify to configure loyalty settings.
-            </p>
+            </p> */}
           </div>
           <div style={ui.statPill}>Search Results: {productOptions.length}</div>
         </div>
@@ -2048,14 +2079,15 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           ])}
           page={loyaltyProductsPage}
           setPage={setLoyaltyProductsPage}
-          perPage={3}
+          perPage={loyaltyProductsPerPage}
+          setPerPage={setLoyaltyProductsPerPage}
         />
       </LegacyCard>
 
       <LegacyCard sectioned>
         <div style={ui.sectionHeaderRow}>
           <div>
-            <h2 style={ui.sectionTitle}>Enabled Loyalty Products</h2>
+            <h2 style={ui.sectionTitle}>loyalty eligible products</h2>
             <p style={ui.sectionSubtitle}>
               View and export products where loyalty eligibility is enabled.
             </p>
@@ -2155,7 +2187,8 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
               ])}
               page={enabledItemsPage}
               setPage={setEnabledItemsPage}
-              perPage={4}
+              perPage={enabledItemsPerPage}
+              setPerPage={setEnabledItemsPerPage}
             />
           </>
         )}
