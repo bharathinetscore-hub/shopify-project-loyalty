@@ -44,6 +44,15 @@ function parseCustomerId(value) {
   return String(value || "").match(/\d+/)?.[0] || "";
 }
 
+function toNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function formatCurrency(value) {
+  return `$${toNumber(value, 0).toFixed(2)}`;
+}
+
 function decodeJwtPayload(token) {
   try {
     const parts = String(token || "").split(".");
@@ -109,6 +118,16 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   const [anniversary, setAnniversary] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [customerContext, setCustomerContext] = useState({
+    customerIdRaw: "",
+    customerId: "",
+    customerEmail: "",
+  });
+  const [giftCardPoints, setGiftCardPoints] = useState("");
+  const [giftCardReceiverEmail, setGiftCardReceiverEmail] = useState("");
+  const [giftCardError, setGiftCardError] = useState("");
+  const [giftCardSuccess, setGiftCardSuccess] = useState("");
+  const [giftCardSubmitting, setGiftCardSubmitting] = useState(false);
   const [data, setData] = useState({
     labels: {},
     loyaltyPointsEarned: {
@@ -118,58 +137,71 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       rows: [],
     },
     redeemHistory: { rows: [] },
+    giftCardConfig: {
+      minimumRedemptionPoints: 0,
+      eachPointValue: 1,
+      loyaltyPointValue: 1,
+      giftcardExpiryDays: 0,
+    },
   });
+
+  async function loadData({ cancelled = false } = {}) {
+    setLoading(true);
+    setError("");
+    try {
+      if (!API_BASE) {
+        throw new Error("Missing app URL for extension API");
+      }
+      const nextCustomerContext = await getCustomerContext(runtimeApi);
+      const response = await fetch(`${API_BASE}/api/loyalty/get-customer-account-view-config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(nextCustomerContext),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to load loyalty data");
+      }
+      if (!cancelled) {
+        setCustomerContext(nextCustomerContext);
+        setData({
+          labels: payload?.labels || {},
+          loyaltyPointsEarned: payload?.loyaltyPointsEarned || {
+            totalEarnedPoints: 0,
+            totalRedeemedPoints: 0,
+            availablePoints: 0,
+            rows: [],
+          },
+          redeemHistory: payload?.redeemHistory || { rows: [] },
+          giftCardConfig: payload?.giftCardConfig || {
+            minimumRedemptionPoints: 0,
+            eachPointValue: 1,
+            loyaltyPointValue: 1,
+            giftcardExpiryDays: 0,
+          },
+        });
+        const profile = payload?.profile || {};
+        setBirthday(cleanText(profile?.birthday));
+        setAnniversary(cleanText(profile?.anniversary));
+      }
+    } catch (err) {
+      if (!cancelled) {
+        setError(err?.message || "Failed to load loyalty data");
+      }
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadData() {
-      setLoading(true);
-      setError("");
-      try {
-        if (!API_BASE) {
-          throw new Error("Missing app URL for extension API");
-        }
-        const customerContext = await getCustomerContext(runtimeApi);
-        const response = await fetch(`${API_BASE}/api/loyalty/get-customer-account-view-config`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(customerContext),
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(payload?.message || "Failed to load loyalty data");
-        }
-        if (!cancelled) {
-          setData({
-            labels: payload?.labels || {},
-            loyaltyPointsEarned: payload?.loyaltyPointsEarned || {
-              totalEarnedPoints: 0,
-              totalRedeemedPoints: 0,
-              availablePoints: 0,
-              rows: [],
-            },
-            redeemHistory: payload?.redeemHistory || { rows: [] },
-          });
-          const profile = payload?.profile || {};
-          setBirthday(cleanText(profile?.birthday));
-          setAnniversary(cleanText(profile?.anniversary));
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err?.message || "Failed to load loyalty data");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadData();
+    loadData({ cancelled });
     return () => {
       cancelled = true;
     };
@@ -192,6 +224,120 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   };
   const redeemRows = data?.redeemHistory?.rows || [];
   const labels = data?.labels || {};
+  const giftCardConfig = data?.giftCardConfig || {
+    minimumRedemptionPoints: 0,
+    eachPointValue: 1,
+    loyaltyPointValue: 1,
+    giftcardExpiryDays: 0,
+  };
+  const availablePoints = Math.max(0, toNumber(pointsSummary.availablePoints, 0));
+  const minimumRedemptionPoints = Math.max(0, toNumber(giftCardConfig.minimumRedemptionPoints, 0));
+  const eachPointValue = toNumber(giftCardConfig.eachPointValue, 1);
+  const loyaltyPointValue = toNumber(giftCardConfig.loyaltyPointValue, 1);
+  const maxGiftCardAmount =
+    eachPointValue > 0 && loyaltyPointValue > 0
+      ? (availablePoints / eachPointValue) * loyaltyPointValue
+      : 0;
+  const enteredGiftCardPoints = cleanText(giftCardPoints) === "" ? NaN : Number(giftCardPoints);
+  const calculatedRedeemAmount =
+    Number.isFinite(enteredGiftCardPoints) && enteredGiftCardPoints > 0 && eachPointValue > 0
+      ? (enteredGiftCardPoints / eachPointValue) * loyaltyPointValue
+      : 0;
+  const giftCardValidationMessage = useMemo(() => {
+    if (cleanText(giftCardPoints) === "") return "";
+    if (!Number.isFinite(enteredGiftCardPoints) || enteredGiftCardPoints <= 0) {
+      return "Enter valid points to redeem.";
+    }
+    if (enteredGiftCardPoints < minimumRedemptionPoints) {
+      return `Minimum redeemable points are ${minimumRedemptionPoints.toFixed(2)}.`;
+    }
+    if (enteredGiftCardPoints > availablePoints) {
+      return `Redeem points cannot exceed available points (${availablePoints.toFixed(2)}).`;
+    }
+    return "";
+  }, [availablePoints, enteredGiftCardPoints, giftCardPoints, minimumRedemptionPoints]);
+
+  async function handleGenerateGiftCard() {
+    setGiftCardError("");
+    setGiftCardSuccess("");
+
+    if (!API_BASE) {
+      setGiftCardError("Missing app URL for extension API");
+      return;
+    }
+
+    if (giftCardValidationMessage) {
+      setGiftCardError(giftCardValidationMessage);
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanText(giftCardReceiverEmail))) {
+      setGiftCardError("Enter a valid receiver email.");
+      return;
+    }
+
+    setGiftCardSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/loyalty/redeem-gift-card`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          customerId: customerContext?.customerId,
+          customerEmail: customerContext?.customerEmail,
+          receiverEmail: cleanText(giftCardReceiverEmail),
+          redeemPoints: enteredGiftCardPoints,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to generate gift card");
+      }
+
+      setGiftCardSuccess(
+        `Gift card coupon ${cleanText(payload?.giftCode)} generated for ${formatCurrency(
+          payload?.giftAmount
+        )}.`
+      );
+      setGiftCardPoints("");
+      setGiftCardReceiverEmail("");
+      setData((prev) => {
+        const current = prev?.loyaltyPointsEarned || {};
+        const nextSummary = payload?.summary || {};
+        const nextRow = payload?.row
+          ? {
+              date: payload.row.date_created || "-",
+              activityPerformed: payload.row.event_name || "Gift Card",
+              referenceId: payload.giftCode || payload.row.id || "-",
+              pointsRedeemed: Number(payload.row.points_redeemed || enteredGiftCardPoints || 0),
+              amount: Number(payload?.giftAmount || 0),
+            }
+          : null;
+
+        return {
+          ...prev,
+          loyaltyPointsEarned: {
+            ...current,
+            totalEarnedPoints: Number(nextSummary.totalEarnedPoints ?? current.totalEarnedPoints ?? 0),
+            totalRedeemedPoints: Number(
+              nextSummary.totalRedeemedPoints ?? current.totalRedeemedPoints ?? 0
+            ),
+            availablePoints: Number(nextSummary.availablePoints ?? current.availablePoints ?? 0),
+            rows: current.rows || [],
+          },
+          redeemHistory: {
+            rows: nextRow ? [nextRow, ...(prev?.redeemHistory?.rows || [])] : prev?.redeemHistory?.rows || [],
+          },
+        };
+      });
+    } catch (err) {
+      setGiftCardError(err?.message || "Failed to generate gift card");
+    } finally {
+      setGiftCardSubmitting(false);
+    }
+  }
 
   function renderPointsEarnedLayout() {
     return (
@@ -326,19 +472,64 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
 
           <s-box border="base" borderRadius="small" padding="base">
             <s-stack direction="inline" justifyContent="space-between" alignItems="center">
-              <s-text>Points Available: 105</s-text>
-              <s-text>Max Amount: $42.00</s-text>
+              <s-text>Points Available: {availablePoints.toFixed(2)}</s-text>
+              <s-text>Max Amount: {formatCurrency(maxGiftCardAmount)}</s-text>
             </s-stack>
           </s-box>
 
-          <s-text-field label="Points to redeem" />
-          <s-text-field label="Receiver's Email" />
-
-          <s-box border="base" borderRadius="small" padding="tight">
-            <s-text></s-text>
+          <s-box border="base" borderRadius="small" padding="base">
+            <s-stack direction="block" gap="tight">
+              <s-text>Minimum redeemable points: {minimumRedemptionPoints.toFixed(2)}</s-text>
+              <s-text>Maximum redeemable points: {availablePoints.toFixed(2)}</s-text>
+              <s-text>Redeem amount: {formatCurrency(calculatedRedeemAmount)}</s-text>
+            </s-stack>
           </s-box>
 
-          <s-button variant="primary" tone="critical">Generate Gift Card</s-button>
+          <s-text-field
+            label="Points to redeem"
+            value={giftCardPoints}
+            inputMode="decimal"
+            onInput={(event) => {
+              setGiftCardPoints(event.currentTarget.value);
+              setGiftCardError("");
+              setGiftCardSuccess("");
+            }}
+          />
+          <s-text-field
+            label="Receiver's Email"
+            value={giftCardReceiverEmail}
+            onInput={(event) => {
+              setGiftCardReceiverEmail(event.currentTarget.value);
+              setGiftCardError("");
+              setGiftCardSuccess("");
+            }}
+          />
+
+          {giftCardError ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="critical">{giftCardError}</s-text>
+            </s-box>
+          ) : null}
+          {!giftCardError && giftCardValidationMessage ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="critical">{giftCardValidationMessage}</s-text>
+            </s-box>
+          ) : null}
+          {giftCardSuccess ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="success">{giftCardSuccess}</s-text>
+            </s-box>
+          ) : null}
+
+          <s-button
+            variant="primary"
+            tone="critical"
+            loading={giftCardSubmitting}
+            disabled={giftCardSubmitting || loading || !customerContext?.customerId}
+            onClick={handleGenerateGiftCard}
+          >
+            Generate Gift Card
+          </s-button>
         </s-stack>
       </s-box>
     );
