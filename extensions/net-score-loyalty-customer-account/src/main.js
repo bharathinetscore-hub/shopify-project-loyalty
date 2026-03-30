@@ -137,6 +137,18 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       rows: [],
     },
     redeemHistory: { rows: [] },
+    loyaltyTiers: {
+      rows: [],
+      summary: {
+        currentTier: null,
+        nextTier: null,
+        progressPercent: 0,
+        pointsToNextTier: 0,
+        progressCurrentThreshold: 0,
+        progressNextThreshold: 0,
+        isHighestTier: false,
+      },
+    },
     giftCardConfig: {
       minimumRedemptionPoints: 0,
       eachPointValue: 1,
@@ -176,6 +188,18 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             rows: [],
           },
           redeemHistory: payload?.redeemHistory || { rows: [] },
+          loyaltyTiers: payload?.loyaltyTiers || {
+            rows: [],
+            summary: {
+              currentTier: null,
+              nextTier: null,
+              progressPercent: 0,
+              pointsToNextTier: 0,
+              progressCurrentThreshold: 0,
+              progressNextThreshold: 0,
+              isHighestTier: false,
+            },
+          },
           giftCardConfig: payload?.giftCardConfig || {
             minimumRedemptionPoints: 0,
             eachPointValue: 1,
@@ -224,6 +248,16 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   };
   const redeemRows = data?.redeemHistory?.rows || [];
   const labels = data?.labels || {};
+  const loyaltyTierRows = data?.loyaltyTiers?.rows || [];
+  const loyaltyTierSummary = data?.loyaltyTiers?.summary || {
+    currentTier: null,
+    nextTier: null,
+    progressPercent: 0,
+    pointsToNextTier: 0,
+    progressCurrentThreshold: 0,
+    progressNextThreshold: 0,
+    isHighestTier: false,
+  };
   const giftCardConfig = data?.giftCardConfig || {
     minimumRedemptionPoints: 0,
     eachPointValue: 1,
@@ -477,13 +511,13 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             </s-stack>
           </s-box>
 
-          <s-box border="base" borderRadius="small" padding="base">
+          {/* <s-box border="base" borderRadius="small" padding="base">
             <s-stack direction="block" gap="tight">
               <s-text>Minimum redeemable points: {minimumRedemptionPoints.toFixed(2)}</s-text>
               <s-text>Maximum redeemable points: {availablePoints.toFixed(2)}</s-text>
               <s-text>Redeem amount: {formatCurrency(calculatedRedeemAmount)}</s-text>
             </s-stack>
-          </s-box>
+          </s-box> */}
 
           <s-text-field
             label="Points to redeem"
@@ -530,6 +564,94 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           >
             Generate Gift Card
           </s-button>
+        </s-stack>
+      </s-box>
+    );
+  }
+
+  function renderLoyaltyTiersLayout() {
+    const currentTier = loyaltyTierSummary?.currentTier || null;
+    const nextTier = loyaltyTierSummary?.nextTier || null;
+    const currentTierName = currentTier?.name || "None";
+    const nextTierName = nextTier?.name || "No upcoming tier";
+    const progressPercent = Math.max(0, Math.min(100, toNumber(loyaltyTierSummary?.progressPercent, 0)));
+    const pointsToNextTier = Math.max(0, toNumber(loyaltyTierSummary?.pointsToNextTier, 0));
+    const visibleTiers = currentTier ? [currentTier, nextTier].filter(Boolean) : [nextTier].filter(Boolean);
+    const progressHeading = nextTier ? `Progress to ${nextTier.name}` : "Tier Progress";
+
+    return (
+      <s-box border="base" borderRadius="base" padding="base" background="base">
+        <s-stack direction="block" gap="loose">
+          <s-text type="strong">Your Loyalty Tier</s-text>
+
+          <s-stack direction="block" gap="tight">
+            <s-text>
+              Current Tier: {currentTierName}
+            </s-text>
+            <s-text>
+              Your Points: {availablePoints.toFixed(2)}
+            </s-text>
+
+            {nextTier ? (
+              <s-stack direction="block" gap="tight">
+                <s-text type="strong">{progressHeading}</s-text>
+                <s-box
+                  background="subdued"
+                  borderRadius="small"
+                  overflow="hidden"
+                  minBlockSize="12px"
+                >
+                  <s-box
+                    background="success"
+                    borderRadius="small"
+                    minBlockSize="12px"
+                    inlineSize={`${progressPercent}%`}
+                  />
+                </s-box>
+                <s-text>
+                  Need {pointsToNextTier.toFixed(2)} more points to reach {nextTier.name}!
+                </s-text>
+              </s-stack>
+            ) : (
+              <s-text tone="success">You are already in the highest tier.</s-text>
+            )}
+          </s-stack>
+
+          <s-stack direction="block" gap="tight">
+            <s-text type="strong">Available Tiers</s-text>
+            {visibleTiers.length ? (
+              <s-grid
+                gridTemplateColumns={visibleTiers.length > 1 ? "1fr 1fr" : "1fr"}
+                gap="base"
+              >
+                {visibleTiers.map((tier) => {
+                  const isCurrent = currentTier && tier.id === currentTier.id;
+                  return (
+                    <s-box
+                      key={tier.id || tier.name}
+                      border="base"
+                      borderRadius="base"
+                      padding="base"
+                      background={isCurrent ? "success-subdued" : "base"}
+                    >
+                      <s-stack direction="block" gap="tight" alignItems="center">
+                        <s-text type="strong">{tier.name || "-"}</s-text>
+                        <s-text>
+                          Level {toNumber(tier.level, 0)}: {toNumber(tier.threshold, 0).toFixed(2)} Points and above
+                        </s-text>
+                        <s-text>
+                          {toNumber(tier.pointsPerDollar, 0).toFixed(2)}x Points Multiplier
+                        </s-text>
+                        {tier.description ? <s-text>{tier.description}</s-text> : null}
+                      </s-stack>
+                    </s-box>
+                  );
+                })}
+              </s-grid>
+            ) : (
+              <s-text>No active loyalty tiers configured.</s-text>
+            )}
+          </s-stack>
         </s-stack>
       </s-box>
     );
@@ -610,6 +732,8 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
               renderReferFriendLayout()
             ) : activeTab === "generate-gift-card" ? (
               renderGenerateGiftCardLayout()
+            ) : activeTab === "loyalty-tiers" ? (
+              renderLoyaltyTiersLayout()
             ) : activeTab === "update-profile" ? (
               renderUpdateProfileLayout()
             ) : (
