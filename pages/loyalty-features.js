@@ -2,6 +2,31 @@ import { useEffect, useMemo, useState } from "react";
 import { Page, LegacyCard, FormLayout, Checkbox, TextField, Button, Banner } from "@shopify/polaris";
 
 const ui = {
+  pageShell: {
+    minHeight: "100vh",
+    background:
+      "radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.12), transparent 34%), radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.14), transparent 36%), linear-gradient(180deg, #f8fbff 0%, #f7f7ff 100%)",
+    padding: "24px 0 36px",
+  },
+  headerCard: {
+    marginBottom: 16,
+    padding: "18px 20px",
+    borderRadius: 18,
+    border: "1px solid #dbe5f7",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(245,248,255,0.98) 100%)",
+    boxShadow: "0 12px 26px rgba(15, 23, 42, 0.08)",
+  },
+  pageTitle: {
+    margin: 0,
+    fontSize: 24,
+    fontWeight: 800,
+    color: "#1f2a44",
+  },
+  pageSubtitle: {
+    margin: "8px 0 0",
+    fontSize: 14,
+    color: "#667085",
+  },
   featureSectionTitle: {
     margin: "0 0 12px",
     fontSize: 16,
@@ -15,10 +40,11 @@ const ui = {
     marginBottom: 18,
   },
   featureCard: {
-    border: "1px solid #dfe5f5",
-    borderRadius: 14,
-    padding: "14px 16px",
-    background: "#ffffff",
+    border: "1px solid #dbe5f7",
+    borderRadius: 16,
+    padding: "16px 18px",
+    background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.05)",
   },
   featureRow: {
     display: "flex",
@@ -39,8 +65,8 @@ const ui = {
     color: "#6b7280",
   },
   labelSectionWrap: {
-    marginTop: 10,
-    paddingTop: 6,
+    marginTop: 14,
+    paddingTop: 8,
   },
 };
 
@@ -195,7 +221,13 @@ export default function LoyaltyFeaturesPage() {
   }
 
   return (
+    <div style={ui.pageShell}>
     <Page title="Features">
+      <div style={ui.headerCard}>
+        <h1 style={ui.pageTitle}>Features</h1>
+        <p style={ui.pageSubtitle}>Control loyalty feature availability and update the customer-facing labels used across the app.</p>
+      </div>
+
       <LegacyCard sectioned>
         {notice.message && (
           <div style={{ marginBottom: 12 }}>
@@ -340,6 +372,43 @@ export default function LoyaltyFeaturesPage() {
         </FormLayout>
       </LegacyCard>
       <style jsx global>{`
+        .Polaris-Page {
+          max-width: 1140px;
+        }
+
+        .Polaris-LegacyCard {
+          border-radius: 18px;
+          border: 1px solid #dbe5f7;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        }
+
+        .Polaris-Banner {
+          border-radius: 14px;
+          border: 1px solid #dbe5f7;
+        }
+
+        .Polaris-TextField {
+          border-radius: 12px;
+          border-color: #d5def0;
+          background: #ffffff;
+        }
+
+        .Polaris-TextField:focus-within {
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.16);
+        }
+
+        .Polaris-Button--variantPrimary {
+          background: linear-gradient(120deg, #4f46e5, #0891b2);
+          border-color: transparent;
+          box-shadow: 0 10px 20px rgba(79, 70, 229, 0.22);
+        }
+
+        .Polaris-Button--variantPrimary:hover {
+          background: linear-gradient(120deg, #4338ca, #0f7f99);
+          border-color: transparent;
+        }
+
         .toggle-checkbox .Polaris-Choice {
           margin: 0;
         }
@@ -395,5 +464,6 @@ export default function LoyaltyFeaturesPage() {
         }
       `}</style>
     </Page>
+    </div>
   );
 }
