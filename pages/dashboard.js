@@ -32,6 +32,76 @@ function getEmbeddedQueryString() {
   return query ? `?${query}` : "";
 }
 
+function DashboardIcon({ kind, size = 20, color = "currentColor" }) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: color,
+    strokeWidth: 1.8,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    "aria-hidden": true,
+  };
+
+  const icons = {
+    user: (
+      <>
+        <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
+        <path d="M5 20a7 7 0 0 1 14 0" />
+      </>
+    ),
+    config: (
+      <>
+        <path d="M4 7h10" />
+        <path d="M16 7h4" />
+        <path d="M8 17h12" />
+        <path d="M4 17h2" />
+        <circle cx="14" cy="7" r="2" />
+        <circle cx="8" cy="17" r="2" />
+      </>
+    ),
+    points: (
+      <>
+        <ellipse cx="12" cy="6" rx="6.5" ry="2.5" />
+        <path d="M5.5 6v6c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5V6" />
+        <path d="M5.5 12v6c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5v-6" />
+      </>
+    ),
+    threshold: (
+      <>
+        <path d="M6 19V5" />
+        <path d="M6 5h11l-2.5 4L17 13H6" />
+      </>
+    ),
+    tiers: (
+      <>
+        <path d="M8 20h8" />
+        <path d="M9 16h6" />
+        <path d="M6 5h12v4a6 6 0 0 1-12 0Z" />
+        <path d="M6 7H4a2 2 0 0 0 2 3" />
+        <path d="M18 7h2a2 2 0 0 1-2 3" />
+      </>
+    ),
+    logout: (
+      <>
+        <path d="M10 17l5-5-5-5" />
+        <path d="M15 12H4" />
+        <path d="M20 19V5" />
+      </>
+    ),
+    setup: (
+      <>
+        <path d="M12 8.5a3.5 3.5 0 1 0 3.5 3.5A3.5 3.5 0 0 0 12 8.5Z" />
+        <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 1 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 1 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H20a2 2 0 0 1 0 4h-.2a1 1 0 0 0-.4 1Z" />
+      </>
+    ),
+  };
+
+  return <svg {...common}>{icons[kind] || null}</svg>;
+}
+
 const ui = {
   shell: {
     minHeight: "100vh",
@@ -57,9 +127,26 @@ const ui = {
   heroTopRow: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 12,
     flexWrap: "wrap",
+  },
+  heroIdentity: {
+    display: "flex",
+    alignItems: "center",
+    gap: 18,
+  },
+  heroIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#ffffff",
+    background: "linear-gradient(135deg, #7a7fff 0%, #6d6ff2 100%)",
+    boxShadow: "0 14px 28px rgba(122, 127, 255, 0.28)",
+    flexShrink: 0,
   },
   heroSub: {
     margin: "10px 0 16px",
@@ -147,8 +234,6 @@ const ui = {
     justifyContent: "center",
     background: "#eef2ff",
     color: "#6370a1",
-    fontSize: 12,
-    fontWeight: 800,
     flexShrink: 0,
   },
   navIconActive: {
@@ -745,14 +830,24 @@ export default function Dashboard() {
       <div style={ui.shell} className="dashboard-shell">
         <div className="dashboard-frame">
           <Page>
-            <div style={ui.hero}>
-              <div style={ui.heroTopRow}>
-                <h2 style={ui.heroTitle}>Loyalty Rewards SetUp</h2>
-                <button type="button" style={ui.heroLogoutBtn} onClick={handleLogout}>
-                  Logout
-                </button>
+          <div style={ui.hero}>
+            <div style={ui.heroTopRow}>
+              <div style={ui.heroIdentity}>
+                <div style={ui.heroIconWrap}>
+                  <DashboardIcon kind="setup" size={28} color="#ffffff" />
+                </div>
+                <div>
+                  <h2 style={ui.heroTitle}>Loyalty Rewards SetUp</h2>
+                  <p style={ui.heroSub}>License has expired. Configuration tabs are disabled.</p>
+                </div>
               </div>
-              <p style={ui.heroSub}>License has expired. Configuration tabs are disabled.</p>
+              <button type="button" style={ui.heroLogoutBtn} onClick={handleLogout}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                  <DashboardIcon kind="logout" size={18} color="#ffffff" />
+                  <span>Logout</span>
+                </span>
+              </button>
+            </div>
             </div>
             <Banner tone="critical">
               <p>
@@ -767,8 +862,6 @@ export default function Dashboard() {
 
   const userPanel = (
     <LegacyCard sectioned>
-      <h2 style={ui.cardTitle}>User Details</h2>
-      <p style={ui.cardSubtitle}>License, identity, and subscription context for this store.</p>
       <div style={ui.userGrid}>
         {user.type === "netsuite" && (
           <>
@@ -819,8 +912,6 @@ export default function Dashboard() {
 
   const appPanel = (
     <LegacyCard sectioned>
-      <h2 style={ui.cardTitle}>App Configurations</h2>
-      <p style={ui.cardSubtitle}>Set reward points granted for core customer actions.</p>
       <FormLayout>
         <FormLayout.Group>
           <TextField label="Signup Points" type="number" autoComplete="off" value={appConfig.signup} onChange={(value) => setAppConfig({ ...appConfig, signup: value })} />
@@ -843,8 +934,6 @@ export default function Dashboard() {
 
   const pointsPanel = (
     <LegacyCard sectioned>
-      <h2 style={ui.cardTitle}>Points Configuration</h2>
-      <p style={ui.cardSubtitle}>Define how points map to value and expiration policy.</p>
       <FormLayout>
         <FormLayout.Group>
           <TextField
@@ -907,8 +996,6 @@ export default function Dashboard() {
 
   const thresholdPanel = (
     <LegacyCard sectioned>
-      <h2 style={ui.cardTitle}>Threshold Configuration</h2>
-      <p style={ui.cardSubtitle}>Set the minimum points required for redemption eligibility.</p>
       <FormLayout>
         <FormLayout.Group>
           <TextField
@@ -929,8 +1016,6 @@ export default function Dashboard() {
 
   const socialPanel = (
     <LegacyCard sectioned>
-      <h2 style={ui.cardTitle}>Social Share Configuration</h2>
-      <p style={ui.cardSubtitle}>Reward customers for social engagement activity.</p>
       <FormLayout>
         <FormLayout.Group>
           <TextField
@@ -959,8 +1044,6 @@ export default function Dashboard() {
 
   const featuresPanel = (
     <LegacyCard sectioned>
-      <h2 style={ui.cardTitle}>Features</h2>
-      <p style={ui.cardSubtitle}>Enable or disable storefront loyalty features and configure labels.</p>
       <FormLayout>
         <FormLayout.Group>
           <Checkbox
@@ -1098,9 +1181,6 @@ export default function Dashboard() {
 
   const tiersPanel = (
     <LegacyCard sectioned>
-      <h2 style={ui.cardTitle}>Loyalty Tiers</h2>
-      <p style={ui.cardSubtitle}>Manage threshold strategy and point multipliers across loyalty levels.</p>
-
       <div style={ui.tierTableWrap}>
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
           <thead>
@@ -1182,6 +1262,13 @@ export default function Dashboard() {
   // Order must match `tabs` above so the right content shows per tab
   const panels = [userPanel, appPanel, pointsPanel, thresholdPanel, tiersPanel];
   const currentTab = tabs[activeTab] || tabs[0];
+  const tabIconMap = {
+    user: "user",
+    app: "config",
+    points: "points",
+    threshold: "threshold",
+    tiers: "tiers",
+  };
 
   return (
     <div style={ui.shell} className="dashboard-shell">
@@ -1190,14 +1277,24 @@ export default function Dashboard() {
         >
           <div style={ui.hero}>
             <div style={ui.heroTopRow}>
-              <h2 style={ui.heroTitle}>Loyalty Rewards SetUp</h2>
+              <div style={ui.heroIdentity}>
+                <div style={ui.heroIconWrap}>
+                  <DashboardIcon kind="setup" size={28} color="#ffffff" />
+                </div>
+                <div>
+                  <h2 style={ui.heroTitle}>Loyalty Rewards SetUp</h2>
+                  <p style={ui.heroSub}>
+                    Centralized configuration for rewards, thresholds, point value strategy, and tier progression.
+                  </p>
+                </div>
+              </div>
               <button type="button" style={ui.heroLogoutBtn} onClick={handleLogout}>
-                Logout
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                  <DashboardIcon kind="logout" size={18} color="#ffffff" />
+                  <span>Logout</span>
+                </span>
               </button>
             </div>
-            <p style={ui.heroSub}>
-              Centralized configuration for rewards, thresholds, point value strategy, and tier progression.
-            </p>
             <div style={ui.heroMetaRow}>
               <span style={ui.pill}>Mode: {user.type || "standard"}</span>
               <span style={ui.pill}>License: {(user.licenseKey || "-").slice(0, 14)}...</span>
@@ -1252,12 +1349,11 @@ export default function Dashboard() {
                               ...(isActive ? ui.navIconActive : {}),
                             }}
                           >
-                            {tab.content
-                              .split(" ")
-                              .map((part) => part[0])
-                              .join("")
-                              .slice(0, 2)
-                              .toUpperCase()}
+                            <DashboardIcon
+                              kind={tabIconMap[tab.id]}
+                              size={18}
+                              color={isActive ? "#ffffff" : "#6370a1"}
+                            />
                           </span>
                           <span>{tab.content}</span>
                         </span>
