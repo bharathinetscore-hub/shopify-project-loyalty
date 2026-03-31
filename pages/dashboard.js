@@ -299,46 +299,6 @@ const ui = {
     color: "#111827",
     fontWeight: 650,
   },
-  featureSectionTitle: {
-    margin: "0 0 12px",
-    fontSize: 16,
-    fontWeight: 800,
-    color: "#1f2a44",
-  },
-  featureGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: 12,
-    marginBottom: 18,
-  },
-  featureCard: {
-    border: "1px solid #dfe5f5",
-    borderRadius: 14,
-    padding: "14px 16px",
-    background: "#ffffff",
-  },
-  featureRow: {
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 14,
-  },
-  featureCardTitle: {
-    margin: 0,
-    fontSize: 14,
-    fontWeight: 700,
-    color: "#24324d",
-  },
-  featureCardDesc: {
-    margin: "6px 0 0",
-    fontSize: 12,
-    lineHeight: 1.45,
-    color: "#6b7280",
-  },
-  labelSectionWrap: {
-    marginTop: 10,
-    paddingTop: 6,
-  },
   alertWrap: {
     marginBottom: 16,
   },
@@ -372,27 +332,6 @@ export default function Dashboard() {
     email: "",
     facebook: "",
   });
-  const [featuresConfig, setFeaturesConfig] = useState({
-    loyaltyEligible: false,
-    productSharingThroughEmail: false,
-    enableReferralCodeUseAtSignup: false,
-    loginToSeePoints: false,
-    enableRedeemHistory: false,
-    enableReferFriend: false,
-    enableGiftCertificateGeneration: false,
-    enableTiersInfo: false,
-    enableProfileInfo: false,
-    enablePointsRedeemOnCheckout: false,
-    myAccountTabHeading: "",
-    enableHistoryLabel: "",
-    redeemHistoryLabel: "",
-    referFriendLabel: "",
-    giftCardLabel: "",
-    tiersLabel: "",
-    updateProfileLabel: "",
-    productRedeemLabel: "",
-  });
-
   const [tiers, setTiers] = useState([
     {
       id: null,
@@ -646,41 +585,6 @@ export default function Dashboard() {
     if (user) loadTiers();
   }, [user]);
 
-  useEffect(() => {
-    async function loadFeaturesConfig() {
-      try {
-        const res = await fetch("/api/config/get-features");
-        const data = await res.json();
-        if (!data) return;
-
-        setFeaturesConfig({
-          loyaltyEligible: !!data.loyalty_eligible,
-          productSharingThroughEmail: !!data.product_sharing_through_email,
-          enableReferralCodeUseAtSignup: !!data.enable_referral_code_use_at_signup,
-          loginToSeePoints: !!data.login_to_see_points,
-          enableRedeemHistory: !!data.enable_redeem_history,
-          enableReferFriend: !!data.enable_refer_friend,
-          enableGiftCertificateGeneration: !!data.enable_gift_certificate_generation,
-          enableTiersInfo: !!data.enable_tiers_info,
-          enableProfileInfo: !!data.enable_profile_info,
-          enablePointsRedeemOnCheckout: !!data.enable_points_redeem_on_checkout,
-          myAccountTabHeading: data.my_account_tab_heading ?? "",
-          enableHistoryLabel: data.enable_history_label ?? "",
-          redeemHistoryLabel: data.redeem_history_label ?? "",
-          referFriendLabel: data.refer_friend_label ?? "",
-          giftCardLabel: data.gift_card_label ?? "",
-          tiersLabel: data.tiers_label ?? "",
-          updateProfileLabel: data.update_profile_label ?? "",
-          productRedeemLabel: data.product_redeem_label ?? "",
-        });
-      } catch (err) {
-        console.error("Features config load error:", err);
-      }
-    }
-
-    if (user) loadFeaturesConfig();
-  }, [user]);
-
   const nextTierLevel = useMemo(() => {
     const maxLevel = tiers.reduce((max, tier) => {
       const parsed = Number(tier.level);
@@ -694,7 +598,6 @@ export default function Dashboard() {
     { id: "app", content: "App Config", panelID: "app-panel" },
     { id: "points", content: "Points Config", panelID: "points-panel" },
     { id: "threshold", content: "Threshold", panelID: "threshold-panel" },
-    { id: "features", content: "Features", panelID: "features-panel" },
     // { id: "social", content: "Social Share", panelID: "social-panel" },
     { id: "tiers", content: "Loyalty Tiers", panelID: "tiers-panel" },
   ];
@@ -706,20 +609,6 @@ export default function Dashboard() {
   const clearNotice = () => {
     setNotice({ message: "", tone: "success" });
   };
-
-  const renderFeatureToggle = (label, description, checked, onChange) => (
-    <div style={ui.featureCard}>
-      <div style={ui.featureRow}>
-        <div>
-          <p style={ui.featureCardTitle}>{label}</p>
-          <p style={ui.featureCardDesc}>{description}</p>
-        </div>
-        <div className="toggle-checkbox">
-          <Checkbox label="" checked={checked} onChange={onChange} />
-        </div>
-      </div>
-    </div>
-  );
 
   const handleLogout = () => {
     sessionStorage.removeItem("lmpUser");
@@ -749,24 +638,6 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Save config error:", err);
       showNotice("Failed to save configuration.", "critical");
-    }
-  };
-
-  const saveFeaturesConfig = async () => {
-    clearNotice();
-
-    try {
-      const res = await fetch("/api/config/save-features", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(featuresConfig),
-      });
-
-      if (!res.ok) throw new Error("Failed to save features configuration");
-      showNotice("Features configuration saved successfully.", "success");
-    } catch (err) {
-      console.error("Save features config error:", err);
-      showNotice("Failed to save features configuration.", "critical");
     }
   };
 
@@ -1053,143 +924,6 @@ export default function Dashboard() {
     </LegacyCard>
   );
 
-  const featuresPanel = (
-    <LegacyCard sectioned>
-      <div style={ui.featureSectionTitle}>Feature toggles</div>
-      <div style={ui.featureGrid}>
-        {renderFeatureToggle(
-          "Loyalty Eligible",
-          "Allow this store to use loyalty functionality across the app.",
-          featuresConfig.loyaltyEligible,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, loyaltyEligible: value }))
-        )}
-        {renderFeatureToggle(
-          "Product Sharing through Email",
-          "Reward or enable product sharing by email from your loyalty flow.",
-          featuresConfig.productSharingThroughEmail,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, productSharingThroughEmail: value }))
-        )}
-        {renderFeatureToggle(
-          "Referral Code at Signup",
-          "Enable referral code usage during customer signup.",
-          featuresConfig.enableReferralCodeUseAtSignup,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, enableReferralCodeUseAtSignup: value }))
-        )}
-        {renderFeatureToggle(
-          "Login to See Points",
-          "Require login before showing points-related loyalty information.",
-          featuresConfig.loginToSeePoints,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, loginToSeePoints: value }))
-        )}
-        {renderFeatureToggle(
-          "Redeem History",
-          "Show customers their loyalty redemption history.",
-          featuresConfig.enableRedeemHistory,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, enableRedeemHistory: value }))
-        )}
-        {renderFeatureToggle(
-          "Refer Friend",
-          "Enable the referral program section for customers.",
-          featuresConfig.enableReferFriend,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, enableReferFriend: value }))
-        )}
-        {renderFeatureToggle(
-          "Gift Certificate Generation",
-          "Allow customers to convert points into gift cards.",
-          featuresConfig.enableGiftCertificateGeneration,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, enableGiftCertificateGeneration: value }))
-        )}
-        {renderFeatureToggle(
-          "Tiers Information",
-          "Show loyalty tier details and progress information.",
-          featuresConfig.enableTiersInfo,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, enableTiersInfo: value }))
-        )}
-        {renderFeatureToggle(
-          "Profile Information",
-          "Allow customers to update profile-based loyalty information.",
-          featuresConfig.enableProfileInfo,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, enableProfileInfo: value }))
-        )}
-        {renderFeatureToggle(
-          "Redeem on Checkout",
-          "Enable loyalty point redemption during checkout.",
-          featuresConfig.enablePointsRedeemOnCheckout,
-          (value) => setFeaturesConfig((prev) => ({ ...prev, enablePointsRedeemOnCheckout: value }))
-        )}
-      </div>
-
-      <div style={ui.labelSectionWrap}>
-        <h3 style={{ margin: "8px 0 12px", fontSize: 16, fontWeight: 700 }}>Label configuration</h3>
-        <FormLayout>
-          <FormLayout.Group>
-            <TextField
-              label="My account tab heading"
-              autoComplete="off"
-              value={featuresConfig.myAccountTabHeading}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, myAccountTabHeading: value }))}
-            />
-            <TextField
-              label="Enable history"
-              autoComplete="off"
-              value={featuresConfig.enableHistoryLabel}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, enableHistoryLabel: value }))}
-            />
-          </FormLayout.Group>
-
-          <FormLayout.Group>
-            <TextField
-              label="Redeem history"
-              autoComplete="off"
-              value={featuresConfig.redeemHistoryLabel}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, redeemHistoryLabel: value }))}
-            />
-            <TextField
-              label="Refer friend"
-              autoComplete="off"
-              value={featuresConfig.referFriendLabel}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, referFriendLabel: value }))}
-            />
-          </FormLayout.Group>
-
-          <FormLayout.Group>
-            <TextField
-              label="Gift card"
-              autoComplete="off"
-              value={featuresConfig.giftCardLabel}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, giftCardLabel: value }))}
-            />
-            <TextField
-              label="Tiers"
-              autoComplete="off"
-              value={featuresConfig.tiersLabel}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, tiersLabel: value }))}
-            />
-          </FormLayout.Group>
-
-          <FormLayout.Group>
-            <TextField
-              label="Update profile"
-              autoComplete="off"
-              value={featuresConfig.updateProfileLabel}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, updateProfileLabel: value }))}
-            />
-            <TextField
-              label="Product redeem"
-              autoComplete="off"
-              value={featuresConfig.productRedeemLabel}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, productRedeemLabel: value }))}
-            />
-          </FormLayout.Group>
-
-          <div style={ui.actionRow}>
-            <Button variant="primary" onClick={saveFeaturesConfig}>Save</Button>
-          </div>
-        </FormLayout>
-      </div>
-    </LegacyCard>
-  );
-
   const tiersPanel = (
     <LegacyCard sectioned>
       <div style={ui.tierTableWrap}>
@@ -1271,7 +1005,7 @@ export default function Dashboard() {
   );
 
   // Order must match `tabs` above so the right content shows per tab
-  const panels = [userPanel, appPanel, pointsPanel, thresholdPanel, featuresPanel, tiersPanel];
+  const panels = [userPanel, appPanel, pointsPanel, thresholdPanel, tiersPanel];
   const currentTab = tabs[activeTab] || tabs[0];
 
   return (
@@ -1351,9 +1085,7 @@ export default function Dashboard() {
                         ? "Define point value, equivalence, and expiry policy."
                       : currentTab.id === "threshold"
                         ? "Set the minimum points required for redemption eligibility."
-                        : currentTab.id === "features"
-                          ? "Configure which loyalty experiences are enabled across the app."
-                          : "Manage threshold strategy and point multipliers across loyalty levels."}
+                        : "Manage threshold strategy and point multipliers across loyalty levels."}
                 </p>
               </div>
               <div>{panels[activeTab]}</div>

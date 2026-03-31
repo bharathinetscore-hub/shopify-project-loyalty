@@ -1,6 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
 import { Page, LegacyCard, FormLayout, Checkbox, TextField, Button, Banner } from "@shopify/polaris";
 
+const ui = {
+  featureSectionTitle: {
+    margin: "0 0 12px",
+    fontSize: 16,
+    fontWeight: 800,
+    color: "#1f2a44",
+  },
+  featureGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 12,
+    marginBottom: 18,
+  },
+  featureCard: {
+    border: "1px solid #dfe5f5",
+    borderRadius: 14,
+    padding: "14px 16px",
+    background: "#ffffff",
+  },
+  featureRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 14,
+  },
+  featureCardTitle: {
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#24324d",
+  },
+  featureCardDesc: {
+    margin: "6px 0 0",
+    fontSize: 12,
+    lineHeight: 1.45,
+    color: "#6b7280",
+  },
+  labelSectionWrap: {
+    marginTop: 10,
+    paddingTop: 6,
+  },
+};
+
 function getEmbeddedQueryString() {
   if (typeof window === "undefined") return "";
 
@@ -122,6 +165,20 @@ export default function LoyaltyFeaturesPage() {
     }
   }
 
+  const renderFeatureToggle = (label, description, checked, onChange) => (
+    <div style={ui.featureCard}>
+      <div style={ui.featureRow}>
+        <div>
+          <p style={ui.featureCardTitle}>{label}</p>
+          <p style={ui.featureCardDesc}>{description}</p>
+        </div>
+        <div className="toggle-checkbox">
+          <Checkbox label="" checked={checked} onChange={onChange} />
+        </div>
+      </div>
+    </div>
+  );
+
   if (user === undefined) return <p style={{ padding: 20 }}>Loading...</p>;
   if (!user) return <p style={{ padding: 20 }}>Redirecting...</p>;
 
@@ -147,76 +204,75 @@ export default function LoyaltyFeaturesPage() {
             </Banner>
           </div>
         )}
-        <h3 style={{ margin: "8px 0 0", fontSize: 16, fontWeight: 700 }}>Features configuration</h3>
+        <div style={ui.featureSectionTitle}>Features configuration</div>
+        <div style={ui.featureGrid}>
+          {renderFeatureToggle(
+            "Loyalty Eligible",
+            "Allow this store to use loyalty functionality across the app.",
+            featuresConfig.loyaltyEligible,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, loyaltyEligible: value }))
+          )}
+          {renderFeatureToggle(
+            "Product Sharing through Email",
+            "Reward or enable product sharing by email from your loyalty flow.",
+            featuresConfig.productSharingThroughEmail,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, productSharingThroughEmail: value }))
+          )}
+          {renderFeatureToggle(
+            "Referral Code at Signup",
+            "Enable referral code usage during customer signup.",
+            featuresConfig.enableReferralCodeUseAtSignup,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, enableReferralCodeUseAtSignup: value }))
+          )}
+          {renderFeatureToggle(
+            "Login to See Points",
+            "Require login before showing points-related loyalty information.",
+            featuresConfig.loginToSeePoints,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, loginToSeePoints: value }))
+          )}
+          {renderFeatureToggle(
+            "Redeem History",
+            "Show customers their loyalty redemption history.",
+            featuresConfig.enableRedeemHistory,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, enableRedeemHistory: value }))
+          )}
+          {renderFeatureToggle(
+            "Refer Friend",
+            "Enable the referral program section for customers.",
+            featuresConfig.enableReferFriend,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, enableReferFriend: value }))
+          )}
+          {renderFeatureToggle(
+            "Gift Certificate Generation",
+            "Allow customers to convert points into gift cards.",
+            featuresConfig.enableGiftCertificateGeneration,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, enableGiftCertificateGeneration: value }))
+          )}
+          {renderFeatureToggle(
+            "Tiers Information",
+            "Show loyalty tier details and progress information.",
+            featuresConfig.enableTiersInfo,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, enableTiersInfo: value }))
+          )}
+          {renderFeatureToggle(
+            "Profile Information",
+            "Allow customers to update profile-based loyalty information.",
+            featuresConfig.enableProfileInfo,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, enableProfileInfo: value }))
+          )}
+          {renderFeatureToggle(
+            "Redeem on Checkout",
+            "Enable loyalty point redemption during checkout.",
+            featuresConfig.enablePointsRedeemOnCheckout,
+            (value) => setFeaturesConfig((prev) => ({ ...prev, enablePointsRedeemOnCheckout: value }))
+          )}
+        </div>
 
+        <div style={ui.labelSectionWrap}>
+          <h3 style={{ margin: "8px 0 12px", fontSize: 16, fontWeight: 700 }}>Label configuration</h3>
+        </div>
 
         <FormLayout>
-          <FormLayout.Group>
-            <Checkbox
-              label="Loyalty Eligible"
-              checked={featuresConfig.loyaltyEligible}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, loyaltyEligible: value }))}
-            />
-            <Checkbox
-              label="Product Sharing through Email"
-              checked={featuresConfig.productSharingThroughEmail}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, productSharingThroughEmail: value }))}
-            />
-          </FormLayout.Group>
-
-          <FormLayout.Group>
-            <Checkbox
-              label="Enable referral code use at signup"
-              checked={featuresConfig.enableReferralCodeUseAtSignup}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, enableReferralCodeUseAtSignup: value }))}
-            />
-            <Checkbox
-              label="Login to see points"
-              checked={featuresConfig.loginToSeePoints}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, loginToSeePoints: value }))}
-            />
-          </FormLayout.Group>
-
-          <FormLayout.Group>
-            <Checkbox
-              label="Enable redeem history"
-              checked={featuresConfig.enableRedeemHistory}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, enableRedeemHistory: value }))}
-            />
-            <Checkbox
-              label="Enable refer friend"
-              checked={featuresConfig.enableReferFriend}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, enableReferFriend: value }))}
-            />
-          </FormLayout.Group>
-
-          <FormLayout.Group>
-            <Checkbox
-              label="Enable gift certificate generation"
-              checked={featuresConfig.enableGiftCertificateGeneration}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, enableGiftCertificateGeneration: value }))}
-            />
-            <Checkbox
-              label="Enable tiers info"
-              checked={featuresConfig.enableTiersInfo}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, enableTiersInfo: value }))}
-            />
-          </FormLayout.Group>
-
-          <FormLayout.Group>
-            <Checkbox
-              label="Enable profile info"
-              checked={featuresConfig.enableProfileInfo}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, enableProfileInfo: value }))}
-            />
-            <Checkbox
-              label="Enable points redeem on checkout"
-              checked={featuresConfig.enablePointsRedeemOnCheckout}
-              onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, enablePointsRedeemOnCheckout: value }))}
-            />
-          </FormLayout.Group>
-
-          <h3 style={{ margin: "8px 0 0", fontSize: 16, fontWeight: 700 }}>Label configuration</h3>
 
           <FormLayout.Group>
             <TextField
@@ -283,6 +339,61 @@ export default function LoyaltyFeaturesPage() {
           </div>
         </FormLayout>
       </LegacyCard>
+      <style jsx global>{`
+        .toggle-checkbox .Polaris-Choice {
+          margin: 0;
+        }
+
+        .toggle-checkbox .Polaris-Choice__Control {
+          margin: 0;
+        }
+
+        .toggle-checkbox .Polaris-Checkbox {
+          width: 46px;
+          min-width: 46px;
+          height: 28px;
+          position: relative;
+        }
+
+        .toggle-checkbox .Polaris-Checkbox__Input {
+          width: 46px;
+          height: 28px;
+        }
+
+        .toggle-checkbox .Polaris-Checkbox__Backdrop {
+          inset: 0;
+          border-radius: 999px;
+          border: 1px solid #cfd8ee;
+          background: #e9eef8;
+        }
+
+        .toggle-checkbox .Polaris-Checkbox__Icon {
+          display: none;
+        }
+
+        .toggle-checkbox .Polaris-Checkbox::after {
+          content: "";
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          width: 18px;
+          height: 18px;
+          border-radius: 999px;
+          background: #ffffff;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
+          transition: transform 140ms ease;
+          pointer-events: none;
+        }
+
+        .toggle-checkbox .Polaris-Checkbox__Input:checked + .Polaris-Checkbox__Backdrop {
+          background: linear-gradient(120deg, #4f46e5, #0891b2);
+          border-color: transparent;
+        }
+
+        .toggle-checkbox .Polaris-Checkbox:has(.Polaris-Checkbox__Input:checked)::after {
+          transform: translateX(18px);
+        }
+      `}</style>
     </Page>
   );
 }
