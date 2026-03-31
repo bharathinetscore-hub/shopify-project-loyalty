@@ -307,6 +307,8 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     eachPointValue > 0 && loyaltyPointValue > 0
       ? (availablePoints / eachPointValue) * loyaltyPointValue
       : 0;
+  const isGiftCardEligible =
+    minimumRedemptionPoints <= 0 || availablePoints >= minimumRedemptionPoints;
   const enteredGiftCardPoints = cleanText(giftCardPoints) === "" ? NaN : Number(giftCardPoints);
   const calculatedRedeemAmount =
     Number.isFinite(enteredGiftCardPoints) && enteredGiftCardPoints > 0 && eachPointValue > 0
@@ -317,14 +319,11 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     if (!Number.isFinite(enteredGiftCardPoints) || enteredGiftCardPoints <= 0) {
       return "Enter valid points to redeem.";
     }
-    if (enteredGiftCardPoints < minimumRedemptionPoints) {
-      return `Minimum redeemable points are ${minimumRedemptionPoints.toFixed(2)}.`;
-    }
     if (enteredGiftCardPoints > availablePoints) {
       return `Redeem points cannot exceed available points (${availablePoints.toFixed(2)}).`;
     }
     return "";
-  }, [availablePoints, enteredGiftCardPoints, giftCardPoints, minimumRedemptionPoints]);
+  }, [availablePoints, enteredGiftCardPoints, giftCardPoints]);
 
   async function handleGenerateGiftCard() {
     setGiftCardError("");
@@ -615,6 +614,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             label="Points to redeem"
             value={giftCardPoints}
             inputMode="decimal"
+            disabled={!isGiftCardEligible}
             onInput={(event) => {
               setGiftCardPoints(event.currentTarget.value);
               setGiftCardError("");
@@ -624,6 +624,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           <s-text-field
             label="Receiver's Email"
             value={giftCardReceiverEmail}
+            disabled={!isGiftCardEligible}
             onInput={(event) => {
               setGiftCardReceiverEmail(event.currentTarget.value);
               setGiftCardError("");
@@ -631,6 +632,13 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             }}
           />
 
+          {!isGiftCardEligible ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="critical">
+                You need at least {minimumRedemptionPoints.toFixed(2)} available points to redeem a gift card.
+              </s-text>
+            </s-box>
+          ) : null}
           {giftCardError ? (
             <s-box border="base" borderRadius="small" padding="tight">
               <s-text tone="critical">{giftCardError}</s-text>
@@ -651,7 +659,12 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             variant="primary"
             tone="critical"
             loading={giftCardSubmitting}
-            disabled={giftCardSubmitting || loading || !customerContext?.customerId}
+            disabled={
+              giftCardSubmitting ||
+              loading ||
+              !customerContext?.customerId ||
+              !isGiftCardEligible
+            }
             onClick={handleGenerateGiftCard}
           >
             Generate Gift Card
