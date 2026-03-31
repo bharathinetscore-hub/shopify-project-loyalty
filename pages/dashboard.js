@@ -110,48 +110,31 @@ const ui = {
     padding: "28px 0 40px",
   },
   hero: {
-    borderRadius: 24,
-    padding: "28px 30px 24px",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(245,247,255,0.98) 100%)",
-    color: "#25304d",
-    border: "1px solid #dfe5fb",
-    boxShadow: "0 18px 40px rgba(111, 127, 191, 0.18)",
+    borderRadius: 18,
+    padding: "30px 30px 24px",
+    background: "#1491ae",
+    color: "#ffffff",
+    border: "1px solid rgba(255,255,255,0.22)",
+    boxShadow: "0 14px 30px rgba(79, 70, 229, 0.22)",
     marginBottom: 18,
   },
   heroTitle: {
     margin: 0,
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 800,
     letterSpacing: "0.1px",
   },
   heroTopRow: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 12,
     flexWrap: "wrap",
   },
-  heroIdentity: {
-    display: "flex",
-    alignItems: "center",
-    gap: 18,
-  },
-  heroIconWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#ffffff",
-    background: "linear-gradient(135deg, #7a7fff 0%, #6d6ff2 100%)",
-    boxShadow: "0 14px 28px rgba(122, 127, 255, 0.28)",
-    flexShrink: 0,
-  },
   heroSub: {
     margin: "10px 0 16px",
-    color: "#647091",
-    fontSize: 15,
+    color: "rgba(255,255,255,0.95)",
+    fontSize: 16,
   },
   heroMetaRow: {
     display: "flex",
@@ -161,91 +144,64 @@ const ui = {
   pill: {
     padding: "8px 14px",
     borderRadius: 999,
-    border: "1px solid #dfe3f5",
-    background: "#f5f7ff",
-    color: "#55617f",
+    border: "1px solid rgba(255,255,255,0.26)",
+    background: "rgba(255,255,255,0.1)",
+    color: "#ffffff",
     fontSize: 13,
     fontWeight: 600,
   },
   heroLogoutBtn: {
-    border: "1px solid #6674f2",
-    background: "linear-gradient(135deg, #6a78ff 0%, #5d63ea 100%)",
+    border: "1px solid rgba(255,255,255,0.34)",
+    background: "rgba(255,255,255,0.12)",
     color: "#ffffff",
-    borderRadius: 14,
-    padding: "12px 24px",
+    borderRadius: 12,
+    padding: "10px 18px",
     fontSize: 14,
     fontWeight: 700,
     cursor: "pointer",
-    boxShadow: "0 14px 28px rgba(98, 108, 234, 0.28)",
+    boxShadow: "none",
   },
   panelWrap: {
-    background: "transparent",
-    borderRadius: 0,
-    border: "none",
-    boxShadow: "none",
-    padding: 0,
+    background: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 18,
+    border: "1px solid #d8e2f3",
+    boxShadow: "0 8px 22px rgba(15, 23, 42, 0.08)",
+    padding: 18,
     marginTop: 16,
   },
-  dashboardSplit: {
+  tabsBar: {
     display: "grid",
-    gridTemplateColumns: "270px 1fr",
-    gap: 16,
-    alignItems: "start",
-  },
-  sideNav: {
-    background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,248,255,0.98) 100%)",
-    border: "1px solid #dfe5fb",
-    borderRadius: 18,
-    padding: 14,
-    boxShadow: "0 14px 32px rgba(111, 127, 191, 0.14)",
-  },
-  navList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
-  navButton: {
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 8,
+    padding: 10,
     borderRadius: 14,
-    border: "1px solid transparent",
-    background: "transparent",
-    color: "#425074",
-    padding: "14px 16px",
-    cursor: "pointer",
+    background: "linear-gradient(180deg, #eef8ff 0%, #f4f2ff 100%)",
+    border: "1px solid #d9dff2",
+  },
+  tabButton: {
+    borderRadius: 12,
+    minHeight: 46,
+    border: "1px solid #d5def0",
+    background: "#ffffff",
+    color: "#4b5563",
     fontSize: 14,
     fontWeight: 700,
-    textAlign: "left",
+    cursor: "pointer",
+    padding: "0 14px",
   },
-  navButtonActive: {
-    background: "linear-gradient(135deg, #8c8fff 0%, #b39bff 100%)",
+  tabButtonActive: {
     color: "#ffffff",
-    boxShadow: "0 12px 24px rgba(125, 112, 255, 0.24)",
-  },
-  navIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#eef2ff",
-    color: "#6370a1",
-    flexShrink: 0,
-  },
-  navIconActive: {
-    background: "rgba(255,255,255,0.18)",
-    color: "#ffffff",
+    border: "1px solid transparent",
+    background: "linear-gradient(120deg, #4f46e5, #0891b2)",
+    boxShadow: "0 10px 20px rgba(79, 70, 229, 0.24)",
   },
   contentWrap: {
-    background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,249,255,0.98) 100%)",
-    border: "1px solid #dfe5fb",
-    borderRadius: 18,
-    padding: 24,
-    boxShadow: "0 14px 32px rgba(111, 127, 191, 0.14)",
+    marginTop: 18,
+    background: "#ffffff",
+    border: "1px solid #dce3f3",
+    borderRadius: 16,
+    padding: 18,
+    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
   },
   cardTitle: {
     margin: "0 0 6px",
@@ -1262,13 +1218,6 @@ export default function Dashboard() {
   // Order must match `tabs` above so the right content shows per tab
   const panels = [userPanel, appPanel, pointsPanel, thresholdPanel, tiersPanel];
   const currentTab = tabs[activeTab] || tabs[0];
-  const tabIconMap = {
-    user: "user",
-    app: "config",
-    points: "points",
-    threshold: "threshold",
-    tiers: "tiers",
-  };
 
   return (
     <div style={ui.shell} className="dashboard-shell">
@@ -1277,24 +1226,14 @@ export default function Dashboard() {
         >
           <div style={ui.hero}>
             <div style={ui.heroTopRow}>
-              <div style={ui.heroIdentity}>
-                <div style={ui.heroIconWrap}>
-                  <DashboardIcon kind="setup" size={28} color="#ffffff" />
-                </div>
-                <div>
-                  <h2 style={ui.heroTitle}>Loyalty Rewards SetUp</h2>
-                  <p style={ui.heroSub}>
-                    Centralized configuration for rewards, thresholds, point value strategy, and tier progression.
-                  </p>
-                </div>
-              </div>
+              <h2 style={ui.heroTitle}>Loyalty Rewards SetUp</h2>
               <button type="button" style={ui.heroLogoutBtn} onClick={handleLogout}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                  <DashboardIcon kind="logout" size={18} color="#ffffff" />
-                  <span>Logout</span>
-                </span>
+                Logout
               </button>
             </div>
+            <p style={ui.heroSub}>
+              Centralized configuration for rewards, thresholds, point value strategy, and tier progression.
+            </p>
             <div style={ui.heroMetaRow}>
               <span style={ui.pill}>Mode: {user.type || "standard"}</span>
               <span style={ui.pill}>License: {(user.licenseKey || "-").slice(0, 14)}...</span>
@@ -1327,59 +1266,40 @@ export default function Dashboard() {
           )}
 
           <div style={ui.panelWrap}>
-            <div style={ui.dashboardSplit}>
-              <div style={ui.sideNav}>
-                <div style={ui.navList}>
-                  {tabs.map((tab, index) => {
-                    const isActive = index === activeTab;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        style={{
-                          ...ui.navButton,
-                          ...(isActive ? ui.navButtonActive : {}),
-                        }}
-                        onClick={() => setActiveTab(index)}
-                      >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
-                          <span
-                            style={{
-                              ...ui.navIcon,
-                              ...(isActive ? ui.navIconActive : {}),
-                            }}
-                          >
-                            <DashboardIcon
-                              kind={tabIconMap[tab.id]}
-                              size={18}
-                              color={isActive ? "#ffffff" : "#6370a1"}
-                            />
-                          </span>
-                          <span>{tab.content}</span>
-                        </span>
-                        <span>{">"}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+            <div style={ui.tabsBar}>
+              {tabs.map((tab, index) => {
+                const isActive = index === activeTab;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    style={{
+                      ...ui.tabButton,
+                      ...(isActive ? ui.tabButtonActive : {}),
+                    }}
+                    onClick={() => setActiveTab(index)}
+                  >
+                    {tab.content}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={ui.contentWrap}>
+              <div style={{ marginBottom: 18 }}>
+                <h2 style={ui.cardTitle}>{currentTab.content}</h2>
+                <p style={ui.cardSubtitle}>
+                  {currentTab.id === "user"
+                    ? "License, identity, and subscription context for this store."
+                    : currentTab.id === "app"
+                      ? "Set reward points granted for core customer actions."
+                      : currentTab.id === "points"
+                        ? "Define point value, equivalence, and expiry policy."
+                        : currentTab.id === "threshold"
+                          ? "Set the minimum points required for redemption eligibility."
+                          : "Manage threshold strategy and point multipliers across loyalty levels."}
+                </p>
               </div>
-              <div style={ui.contentWrap}>
-                <div style={{ marginBottom: 18 }}>
-                  <h2 style={ui.cardTitle}>{currentTab.content}</h2>
-                  <p style={ui.cardSubtitle}>
-                    {currentTab.id === "user"
-                      ? "License, identity, and subscription context for this store."
-                      : currentTab.id === "app"
-                        ? "Set reward points granted for core customer actions."
-                        : currentTab.id === "points"
-                          ? "Define point value, equivalence, and expiry policy."
-                          : currentTab.id === "threshold"
-                            ? "Set the minimum points required for redemption eligibility."
-                            : "Manage threshold strategy and point multipliers across loyalty levels."}
-                  </p>
-                </div>
-                <div>{panels[activeTab]}</div>
-              </div>
+              <div>{panels[activeTab]}</div>
             </div>
           </div>
         <style jsx global>{`
