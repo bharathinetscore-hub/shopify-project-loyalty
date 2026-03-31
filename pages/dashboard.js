@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import LoyaltyDashboard from "./loyalty-data";
 import {
   Page,
-  Tabs,
   LegacyCard,
   FormLayout,
   TextField,
@@ -37,22 +36,22 @@ const ui = {
   shell: {
     minHeight: "100vh",
     background:
-      "radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.22), transparent 36%), radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.22), transparent 38%), linear-gradient(180deg, #f4fbff 0%, #f6f4ff 100%)",
-    padding: "24px 0 32px",
+      "radial-gradient(circle at 0% 0%, rgba(125, 142, 255, 0.14), transparent 34%), radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.16), transparent 36%), linear-gradient(180deg, #f8fbff 0%, #f7f7ff 100%)",
+    padding: "28px 0 40px",
   },
   hero: {
-    borderRadius: 12,
-    padding: "24px 24px 18px",
-    background: "#0891b2",
-    color: "#fff",
-    border: "1px solid rgba(255, 255, 255, 0.34)",
-    boxShadow: "0 14px 30px rgba(79, 70, 229, 0.26)",
-    marginBottom: 14,
+    borderRadius: 24,
+    padding: "28px 30px 24px",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(245,247,255,0.98) 100%)",
+    color: "#25304d",
+    border: "1px solid #dfe5fb",
+    boxShadow: "0 18px 40px rgba(111, 127, 191, 0.18)",
+    marginBottom: 18,
   },
   heroTitle: {
     margin: 0,
-    fontSize: 22,
-    fontWeight: 700,
+    fontSize: 24,
+    fontWeight: 800,
     letterSpacing: "0.1px",
   },
   heroTopRow: {
@@ -63,57 +62,116 @@ const ui = {
     flexWrap: "wrap",
   },
   heroSub: {
-    margin: "8px 0 14px",
-    opacity: 0.9,
-    fontSize: 14,
+    margin: "10px 0 16px",
+    color: "#647091",
+    fontSize: 15,
   },
   heroMetaRow: {
     display: "flex",
-    gap: 9,
+    gap: 10,
     flexWrap: "wrap",
   },
   pill: {
-    padding: "5px 10px",
+    padding: "8px 14px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.24)",
-    background: "rgba(255,255,255,0.12)",
-    fontSize: 12,
+    border: "1px solid #dfe3f5",
+    background: "#f5f7ff",
+    color: "#55617f",
+    fontSize: 13,
     fontWeight: 600,
   },
   heroLogoutBtn: {
-    border: "1px solid rgba(255,255,255,0.45)",
-    background: "rgba(255,255,255,0.16)",
+    border: "1px solid #6674f2",
+    background: "linear-gradient(135deg, #6a78ff 0%, #5d63ea 100%)",
     color: "#ffffff",
-    borderRadius: 8,
-    padding: "7px 14px",
-    fontSize: 13,
+    borderRadius: 14,
+    padding: "12px 24px",
+    fontSize: 14,
     fontWeight: 700,
     cursor: "pointer",
+    boxShadow: "0 14px 28px rgba(98, 108, 234, 0.28)",
   },
   panelWrap: {
-    background: "rgba(255, 255, 255, 0.94)",
-    borderRadius: 12,
-    border: "1px solid #e6ddd3",
-    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.06)",
-    padding: 14,
-    marginTop: 12,
+    background: "transparent",
+    borderRadius: 0,
+    border: "none",
+    boxShadow: "none",
+    padding: 0,
+    marginTop: 16,
   },
-  tabsWrap: {
-    padding: 8,
+  dashboardSplit: {
+    display: "grid",
+    gridTemplateColumns: "270px 1fr",
+    gap: 16,
+    alignItems: "start",
+  },
+  sideNav: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,248,255,0.98) 100%)",
+    border: "1px solid #dfe5fb",
+    borderRadius: 18,
+    padding: 14,
+    boxShadow: "0 14px 32px rgba(111, 127, 191, 0.14)",
+  },
+  navList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  navButton: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    borderRadius: 14,
+    border: "1px solid transparent",
+    background: "transparent",
+    color: "#425074",
+    padding: "14px 16px",
+    cursor: "pointer",
+    fontSize: 14,
+    fontWeight: 700,
+    textAlign: "left",
+  },
+  navButtonActive: {
+    background: "linear-gradient(135deg, #8c8fff 0%, #b39bff 100%)",
+    color: "#ffffff",
+    boxShadow: "0 12px 24px rgba(125, 112, 255, 0.24)",
+  },
+  navIcon: {
+    width: 28,
+    height: 28,
     borderRadius: 10,
-    background: "linear-gradient(180deg, #eefaff 0%, #f3f1ff 100%)",
-    border: "1px solid #d9dff2",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#eef2ff",
+    color: "#6370a1",
+    fontSize: 12,
+    fontWeight: 800,
+    flexShrink: 0,
+  },
+  navIconActive: {
+    background: "rgba(255,255,255,0.18)",
+    color: "#ffffff",
+  },
+  contentWrap: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,249,255,0.98) 100%)",
+    border: "1px solid #dfe5fb",
+    borderRadius: 18,
+    padding: 24,
+    boxShadow: "0 14px 32px rgba(111, 127, 191, 0.14)",
   },
   cardTitle: {
-    margin: "0 0 2px",
-    fontSize: 18,
-    fontWeight: 750,
-    color: "#0f172a",
+    margin: "0 0 6px",
+    fontSize: 20,
+    fontWeight: 800,
+    color: "#23304f",
   },
   cardSubtitle: {
     margin: "0 0 14px",
-    color: "#57534e",
-    fontSize: 13,
+    color: "#687591",
+    fontSize: 14,
   },
   actionRow: {
     marginTop: 12,
@@ -156,10 +214,10 @@ const ui = {
     marginTop: 4,
   },
   userField: {
-    border: "1px solid #d9e3f5",
-    borderRadius: 10,
-    padding: "8px 10px",
-    background: "linear-gradient(180deg, #ffffff 0%, #f7faff 100%)",
+    border: "1px solid #e2e7f7",
+    borderRadius: 14,
+    padding: "16px 18px",
+    background: "#ffffff",
   },
   userLabel: {
     margin: 0,
@@ -178,10 +236,10 @@ const ui = {
     wordBreak: "break-word",
   },
   userMetaRow: {
-    marginTop: 10,
-    border: "1px solid #d9e3f5",
-    borderRadius: 10,
-    padding: "8px 10px",
+    marginTop: 12,
+    border: "1px solid #e2e7f7",
+    borderRadius: 14,
+    padding: "16px 18px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -196,9 +254,12 @@ const ui = {
   },
   userMetaDate: {
     margin: "2px 0 0",
-    fontSize: 14,
+    fontSize: 16,
     color: "#111827",
     fontWeight: 650,
+  },
+  alertWrap: {
+    marginBottom: 16,
   },
 };
 
@@ -1120,6 +1181,7 @@ export default function Dashboard() {
 
   // Order must match `tabs` above so the right content shows per tab
   const panels = [userPanel, appPanel, pointsPanel, thresholdPanel, tiersPanel];
+  const currentTab = tabs[activeTab] || tabs[0];
 
   return (
     <div style={ui.shell} className="dashboard-shell">
@@ -1148,7 +1210,7 @@ export default function Dashboard() {
           </div>
 
           {notice.message && (
-            <div style={{ marginBottom: 12 }}>
+            <div style={ui.alertWrap}>
               <Banner tone={notice.tone} onDismiss={clearNotice}>
                 <p>{notice.message}</p>
               </Banner>
@@ -1156,7 +1218,7 @@ export default function Dashboard() {
           )}
 
           {typeof daysLeft === "number" && (
-            <div style={{ marginBottom: 12 }}>
+            <div style={ui.alertWrap}>
               <Banner tone={isExpired ? "critical" : daysLeft < 30 ? "critical" : "success"}>
                 <p>
                   {isExpired
@@ -1168,10 +1230,61 @@ export default function Dashboard() {
           )}
 
           <div style={ui.panelWrap}>
-            <div style={ui.tabsWrap}>
-              <Tabs tabs={tabs} selected={activeTab} onSelect={setActiveTab} fitted />
+            <div style={ui.dashboardSplit}>
+              <div style={ui.sideNav}>
+                <div style={ui.navList}>
+                  {tabs.map((tab, index) => {
+                    const isActive = index === activeTab;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        style={{
+                          ...ui.navButton,
+                          ...(isActive ? ui.navButtonActive : {}),
+                        }}
+                        onClick={() => setActiveTab(index)}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
+                          <span
+                            style={{
+                              ...ui.navIcon,
+                              ...(isActive ? ui.navIconActive : {}),
+                            }}
+                          >
+                            {tab.content
+                              .split(" ")
+                              .map((part) => part[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </span>
+                          <span>{tab.content}</span>
+                        </span>
+                        <span>{">"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={ui.contentWrap}>
+                <div style={{ marginBottom: 18 }}>
+                  <h2 style={ui.cardTitle}>{currentTab.content}</h2>
+                  <p style={ui.cardSubtitle}>
+                    {currentTab.id === "user"
+                      ? "License, identity, and subscription context for this store."
+                      : currentTab.id === "app"
+                        ? "Set reward points granted for core customer actions."
+                        : currentTab.id === "points"
+                          ? "Define point value, equivalence, and expiry policy."
+                          : currentTab.id === "threshold"
+                            ? "Set the minimum points required for redemption eligibility."
+                            : "Manage threshold strategy and point multipliers across loyalty levels."}
+                  </p>
+                </div>
+                <div>{panels[activeTab]}</div>
+              </div>
             </div>
-            <div style={{ marginTop: 14 }}>{panels[activeTab]}</div>
           </div>
         <style jsx global>{`
           :root {
@@ -1211,63 +1324,14 @@ export default function Dashboard() {
           }
 
           .Polaris-LegacyCard {
-            border: 1px solid #dce2f2;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-          }
-
-          .Polaris-Tabs {
-            margin: 0;
-          }
-
-          .Polaris-Tabs__TabContainer {
-            gap: 8px;
-          }
-
-          .Polaris-Tabs__Tab {
-            border-radius: 8px;
-            min-height: 36px;
-            padding: 0 12px;
-            border: 1px solid var(--dash-border);
-            background: #ffffff;
-            color: var(--dash-subtle-ink);
-            font-weight: 600;
-            transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
-          }
-
-          .Polaris-Tabs__Tab:hover {
-            border-color: #cbd7ef;
-            background: #f1f6ff;
-          }
-
-          .Polaris-Tabs__Tab--active,
-          .Polaris-Tabs__Tab[aria-selected='true'] {
-            color: #ffffff !important;
-            border-color: var(--dash-tab-active-start);
-            background: linear-gradient(120deg, var(--dash-tab-active-start), var(--dash-tab-active-end));
-            box-shadow: 0 8px 18px rgba(79, 70, 229, 0.28);
-          }
-
-          .Polaris-Tabs__Tab--active .Polaris-Text--root,
-          .Polaris-Tabs__Tab[aria-selected='true'] .Polaris-Text--root,
-          .Polaris-Tabs__Tab--active .Polaris-Icon,
-          .Polaris-Tabs__Tab[aria-selected='true'] .Polaris-Icon,
-          .Polaris-Tabs__Tab--active span,
-          .Polaris-Tabs__Tab[aria-selected='true'] span {
-            color: #ffffff !important;
-          }
-
-          .Polaris-Tabs__Tab--active path,
-          .Polaris-Tabs__Tab[aria-selected='true'] path,
-          .Polaris-Tabs__Tab--active svg,
-          .Polaris-Tabs__Tab[aria-selected='true'] svg {
-            fill: #ffffff !important;
-            stroke: #ffffff !important;
+            border: 1px solid #e1e7f7;
+            border-radius: 18px;
+            box-shadow: none;
           }
 
           .Polaris-TextField {
-            border-radius: 8px;
-            border-color: var(--dash-border);
+            border-radius: 12px;
+            border-color: #dfe5f5;
             background: #ffffff;
             transition: border-color 120ms ease, box-shadow 120ms ease;
           }
@@ -1314,9 +1378,10 @@ export default function Dashboard() {
           }
 
           .Polaris-Banner {
-            border-radius: 10px;
-            border: 1px solid #dbe3f5;
+            border-radius: 18px;
+            border: 1px solid #dfe7f8;
             background: linear-gradient(180deg, #ffffff, #f8fbff);
+            box-shadow: 0 12px 28px rgba(111, 127, 191, 0.12);
           }
 
           .Polaris-Checkbox__Input:checked + .Polaris-Checkbox__Backdrop {
@@ -1332,14 +1397,8 @@ export default function Dashboard() {
             .Polaris-Page-Header {
               padding: 12px;
             }
-
-            .Polaris-Tabs__Tab {
-              min-height: 34px;
-              padding: 0 10px;
-              font-size: 12px;
-            }
           }
-          `}</style>
+        `}</style>
         </Page>
       </div>
     </div>
