@@ -1,4 +1,5 @@
 import pool from "../../../db/db";
+import cors from "../../../lib/cors";
 
 function cleanText(value) {
   return String(value || "").trim();
@@ -210,6 +211,8 @@ async function loadExistingAwards(db, customerId, eventIds) {
 }
 
 export default async function handler(req, res) {
+  if (cors(req, res)) return;
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
