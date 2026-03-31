@@ -40,6 +40,13 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
+function normalizeStoredDate(value) {
+  const text = cleanText(value);
+  if (!text) return "";
+  const match = text.match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : text;
+}
+
 function parseCustomerId(value) {
   return String(value || "").match(/\d+/)?.[0] || "";
 }
@@ -236,8 +243,8 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           },
         });
         const profile = payload?.profile || {};
-        setBirthday(cleanText(profile?.birthday));
-        setAnniversary(cleanText(profile?.anniversary));
+        setBirthday(normalizeStoredDate(profile?.birthday));
+        setAnniversary(normalizeStoredDate(profile?.anniversary));
       }
     } catch (err) {
       if (!cancelled) {
@@ -370,7 +377,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
         const nextSummary = payload?.summary || {};
         const nextRow = payload?.row
           ? {
-              date: payload.row.date_created || "-",
+              date: normalizeStoredDate(payload.row.date_created) || "-",
               activityPerformed: payload.row.event_name || "Gift Card",
               referenceId: payload.giftCode || payload.row.id || "-",
               pointsRedeemed: Number(payload.row.points_redeemed || enteredGiftCardPoints || 0),
@@ -497,7 +504,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             {(pointsSummary.rows || []).map((row, idx) => (
               <s-grid key={`${row.referenceId || idx}`} gridTemplateColumns="1fr 2fr 1fr 1fr" gap="none">
                 <s-box border="base" padding="base">
-                  <s-text>{row.date || "-"}</s-text>
+                  <s-text>{normalizeStoredDate(row.date) || "-"}</s-text>
                 </s-box>
                 <s-box border="base" padding="base">
                   <s-text>{row.activityPerformed || "-"}</s-text>
@@ -532,7 +539,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             {redeemRows.map((row, idx) => (
               <s-grid key={`${row.referenceId || idx}`} gridTemplateColumns="1fr 2fr 1fr 1fr 1fr" gap="none">
                 <s-box border="base" padding="base">
-                  <s-text>{row.date || "-"}</s-text>
+                  <s-text>{normalizeStoredDate(row.date) || "-"}</s-text>
                 </s-box>
                 <s-box border="base" padding="base">
                   <s-text>{row.activityPerformed || "-"}</s-text>
