@@ -1,5 +1,6 @@
 import pool from "../../../db/db";
 import cors from "../../../lib/cors";
+import nodemailer from "nodemailer";
 const { getShopAccessToken } = require("../../../lib/shopify-token-store");
 
 function cleanText(value) {
@@ -157,6 +158,94 @@ function buildExpiryTimestamp(expiryDays) {
   const dt = new Date();
   dt.setDate(dt.getDate() + days);
   return dt.toISOString();
+}
+
+function getEmailTransportConfig() {
+  const host = cleanText(process.env.SMTP_HOST);
+  const port = toNumber(process.env.SMTP_PORT, 0);
+  const user = cleanText(process.env.SMTP_USER);
+  const pass = cleanText(process.env.SMTP_PASS);
+  const fromEmail = cleanText(process.env.MAIL_FROM || user);
+  const fromName = cleanText(process.env.MAIL_FROM_NAME || "NetScore Loyalty Rewards");
+
+  if (!host || !port || !user || !pass || !fromEmail) {
+    return null;
+  }
+
+  return {
+    host,
+    port,
+    user,
+    pass,
+    fromEmail,
+    fromName,
+    secure: port === 465,
+  };
+}
+
+async function sendGiftCardEmail({ receiverEmail, giftCode, giftAmount, expiryDate }) {
+  const config = getEmailTransportConfig();
+  if (!config) {
+    return {
+      sent: false,
+      error:
+        "Email is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and MAIL_FROM to enable gift card emails.",
+    };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  });
+
+  const formattedAmount = `$${toNumber(giftAmount, 0).toFixed(2)}`;
+  const expiryLine = expiryDate ? `<p><strong>Expires:</strong> ${cleanText(expiryDate)}</p>` : "";
+
+  try {
+    await transporter.sendMail({
+      from: `"${config.fromName}" <${config.fromEmail}>`,
+      to: receiverEmail,
+      subject: "Your Loyalty Gift Card Coupon Code",
+      text: [
+        "Hello,",
+        "",
+        "You've received a Loyalty Gift Card!",
+        "",
+        `Coupon Code: ${giftCode}`,
+        `Amount: ${formattedAmount}`,
+        expiryDate ? `Expires: ${cleanText(expiryDate)}` : "",
+        "",
+        "Use it at checkout to redeem your discount.",
+        "",
+        "Thank you!",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      html: `
+        <div style="font-family: Arial, sans-serif; font-size: 16px; color: #1f2937;">
+          <p>Hello,</p>
+          <p>You've received a Loyalty Gift Card!</p>
+          <p><strong>Coupon Code:</strong> ${giftCode}</p>
+          <p><strong>Amount:</strong> ${formattedAmount}</p>
+          ${expiryLine}
+          <p>Use it at checkout to redeem your discount.</p>
+          <p>Thank you!</p>
+        </div>
+      `,
+    });
+
+    return { sent: true, error: "" };
+  } catch (error) {
+    return {
+      sent: false,
+      error: cleanText(error?.message) || "Failed to send gift card email.",
+    };
+  }
 }
 
 async function createShopifyDiscountCode({ shop, token, code, amount, expiryDays }) {
@@ -379,12 +468,24 @@ export default async function handler(req, res) {
       ]
     );
 
+    const emailResult = await sendGiftCardEmail({
+      receiverEmail,
+      giftCode: shopifyDiscount.code,
+      giftAmount,
+      expiryDate: shopifyDiscount.endsAt ? shopifyDiscount.endsAt.slice(0, 10) : null,
+    });
+
     return res.status(200).json({
       success: true,
-      message: "Gift card generated successfully",
+      message: emailResult.sent
+        ? `Gift card generated and emailed to ${receiverEmail}.`
+        : `Gift card generated, but email could not be sent to ${receiverEmail}.`,
       giftCode: shopifyDiscount.code,
       giftAmount,
       expiryDate: shopifyDiscount.endsAt,
+      emailSent: emailResult.sent,
+      emailError: emailResult.error || "",
+      receiverEmail,
       row: insertRes.rows[0] || null,
       summary: {
         totalEarnedPoints: points.totalEarned,

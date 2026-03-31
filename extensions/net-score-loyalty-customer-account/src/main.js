@@ -365,9 +365,13 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       }
 
       setGiftCardSuccess(
-        `Gift card coupon ${cleanText(payload?.giftCode)} generated for ${formatCurrency(
-          payload?.giftAmount
-        )}.`
+        payload?.emailSent
+          ? `Gift card coupon ${cleanText(payload?.giftCode)} generated for ${formatCurrency(
+              payload?.giftAmount
+            )} and emailed to ${cleanText(payload?.receiverEmail)}.`
+          : `Gift card coupon ${cleanText(payload?.giftCode)} generated for ${formatCurrency(
+              payload?.giftAmount
+            )}. ${cleanText(payload?.message || payload?.emailError)}`
       );
       setGiftCardPoints("");
       setGiftCardReceiverEmail("");
