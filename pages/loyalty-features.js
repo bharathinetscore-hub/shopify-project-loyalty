@@ -192,7 +192,7 @@ const ui = {
   },
   toggleButton: {
     width: 58,
-    height: 32,
+    height: 25,
     borderRadius: 999,
     border: "none",
     padding: 3,

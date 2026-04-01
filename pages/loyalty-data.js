@@ -295,6 +295,11 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState("");
   const [eventsSearch, setEventsSearch] = useState("");
+  const [giftcardsRows, setGiftcardsRows] = useState([]);
+  const [giftcardsLoading, setGiftcardsLoading] = useState(false);
+  const [giftcardsError, setGiftcardsError] = useState("");
+  const [giftcardsEmailSearch, setGiftcardsEmailSearch] = useState("");
+  const [giftcardsCodeSearch, setGiftcardsCodeSearch] = useState("");
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isEventSaving, setIsEventSaving] = useState(false);
   const [eventForm, setEventForm] = useState({
@@ -319,6 +324,9 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [isCustomerViewModalOpen, setIsCustomerViewModalOpen] = useState(false);
   const [viewingCustomer, setViewingCustomer] = useState(null);
+  const [viewingCustomerEvents, setViewingCustomerEvents] = useState([]);
+  const [viewingCustomerEventsLoading, setViewingCustomerEventsLoading] = useState(false);
+  const [viewingCustomerEventsError, setViewingCustomerEventsError] = useState("");
 
   const [customersPage, setCustomersPage] = useState(1);
   const [eventsPage, setEventsPage] = useState(1);
@@ -883,32 +891,84 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       totalRedeemedPoints: Number(row?.totalRedeemedPoints || 0),
       availablePoints: Number(row?.availablePoints || 0),
     });
+    setViewingCustomerEvents([]);
+    setViewingCustomerEventsError("");
     setIsCustomerViewModalOpen(true);
+    loadCustomerEvents(row);
   }
 
-  function downloadSingleCustomerCsv(row) {
-    if (!row) return;
-    const headers = ["Field", "Value"];
-    const lines = [
-      ["Customer ID", row.id || ""],
-      ["Name", row.name || ""],
-      ["Email", row.email || ""],
-      ["Total Earned Points", String(row.totalEarnedPoints ?? 0)],
-      ["Total Redeemed Points", String(row.totalRedeemedPoints ?? 0)],
-      ["Available Points", String(row.availablePoints ?? 0)],
-      ["Eligible", row.eligibleForLoyalty ? "Yes" : "No"],
-      ["Birthday", row.birthday || ""],
-      ["Anniversary", row.anniversary || ""],
-      ["Referral Code", row.referralCode || ""],
-      ["Used Referral Code", row.usedReferralCode || ""],
-    ];
+  async function loadCustomerEvents(row) {
+    const customerId = String(row?.id || "").trim();
+    const email = String(row?.email || "").trim();
 
-    const csv = [headers.join(","), ...lines.map(([k, v]) => `"${k.replace(/"/g, "\"\"")}","${String(v).replace(/"/g, "\"\"")}"`)].join("\n");
+    if (!customerId && !email) {
+      setViewingCustomerEvents([]);
+      setViewingCustomerEventsError("Customer ID or email is required to load events.");
+      return;
+    }
+
+    try {
+      setViewingCustomerEventsLoading(true);
+      setViewingCustomerEventsError("");
+
+      const params = new URLSearchParams();
+      if (customerId) params.set("customerId", customerId);
+      if (email) params.set("email", email);
+
+      const res = await fetch(`/api/loyalty/get-customer-events?${params.toString()}`);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !Array.isArray(data?.events)) {
+        throw new Error(data?.error || "Failed to load customer events");
+      }
+
+      setViewingCustomerEvents(data.events);
+    } catch (error) {
+      console.error("loadCustomerEvents error:", error);
+      setViewingCustomerEvents([]);
+      setViewingCustomerEventsError(error?.message || "Failed to load customer events");
+    } finally {
+      setViewingCustomerEventsLoading(false);
+    }
+  }
+
+  function downloadSingleCustomerCsv(row, events = []) {
+    if (!row) return;
+    const headers = [
+      "Customer ID",
+      "Customer Name",
+      "Customer Email",
+      "Event Date",
+      "Event Name",
+      "Amount",
+      "Points Earned",
+      "Points Redeemed",
+      "Points Left",
+      "Created At",
+    ];
+    const lines = (events || []).map((event) =>
+      [
+        row.id || "",
+        row.name || "",
+        row.email || "",
+        event.date || "",
+        event.eventName || "",
+        Number(event.amount || 0).toFixed(2),
+        Number(event.pointsEarned || 0).toFixed(2),
+        Number(event.pointsRedeemed || 0).toFixed(2),
+        Number(event.pointsLeft || 0).toFixed(2),
+        event.createdAt || "",
+      ]
+        .map((value) => `"${String(value).replace(/"/g, "\"\"")}"`)
+        .join(",")
+    );
+
+    const csv = [headers.join(","), ...lines].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `customer-${row.id || "profile"}.csv`;
+    a.download = `customer-events-${row.id || "history"}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -975,6 +1035,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           Accept: "application/json",
         },
         body: JSON.stringify({
+          source: "admin",
           customerId: profile.id,
           eligibleForLoyalty: !!profile.eligibleForLoyalty,
           birthday: profile.birthday || null,
@@ -1138,6 +1199,60 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     } finally {
       setEventsLoading(false);
     }
+  }
+
+  async function loadGiftcards({
+    email = giftcardsEmailSearch,
+    code = giftcardsCodeSearch,
+  } = {}) {
+    try {
+      setGiftcardsLoading(true);
+      setGiftcardsError("");
+
+      const params = new URLSearchParams({
+        email: String(email || ""),
+        code: String(code || ""),
+      });
+      const res = await fetch(`/api/loyalty/get-giftcards?${params.toString()}`);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !Array.isArray(data?.giftcards)) {
+        throw new Error(data?.error || "Failed to load giftcards");
+      }
+
+      setGiftcardsRows(data.giftcards);
+    } catch (error) {
+      console.error("loadGiftcards error:", error);
+      setGiftcardsRows([]);
+      setGiftcardsError(error?.message || "Failed to load giftcards");
+    } finally {
+      setGiftcardsLoading(false);
+    }
+  }
+
+  function exportGiftcardsCsv() {
+    const headers = ["Customer", "Email", "Code", "Amount", "Status", "Created"];
+    const lines = giftcardsRows.map((row) =>
+      [
+        row.customerName || "-",
+        row.email || "-",
+        row.code || "-",
+        Number(row.amount || 0).toFixed(2),
+        row.status || "-",
+        row.created ? String(row.created).slice(0, 10) : "-",
+      ]
+        .map((value) => `"${String(value).replace(/"/g, "\"\"")}"`)
+        .join(",")
+    );
+
+    const csv = [headers.join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "giftcards-generated.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function loadSavedCustomers({ q = customersSearch } = {}) {
@@ -1374,6 +1489,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       loadEnabledItems();
       loadItemsTab();
       loadEvents();
+      loadGiftcards();
     }
   }, [user]);
 
@@ -1420,6 +1536,15 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [itemsTabSearch, itemsTabType, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const timeoutId = setTimeout(() => {
+      loadGiftcards({ email: giftcardsEmailSearch, code: giftcardsCodeSearch });
+      setGiftcardsPage(1);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [giftcardsEmailSearch, giftcardsCodeSearch, user]);
 
   /* ---------------- Panels ---------------- */
 
@@ -1725,11 +1850,14 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
         onClose={() => {
           setIsCustomerViewModalOpen(false);
           setViewingCustomer(null);
+          setViewingCustomerEvents([]);
+          setViewingCustomerEventsError("");
         }}
-        title="Customer details"
+        title="Customer event details"
         primaryAction={{
           content: "Download CSV",
-          onAction: () => downloadSingleCustomerCsv(viewingCustomer),
+          onAction: () => downloadSingleCustomerCsv(viewingCustomer, viewingCustomerEvents),
+          disabled: !viewingCustomerEvents.length,
         }}
         secondaryActions={[
           {
@@ -1737,6 +1865,8 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
             onAction: () => {
               setIsCustomerViewModalOpen(false);
               setViewingCustomer(null);
+              setViewingCustomerEvents([]);
+              setViewingCustomerEventsError("");
             },
           },
         ]}
@@ -1746,17 +1876,43 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
             <Text as="p" variant="bodyMd">No customer selected.</Text>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              <Text as="p" variant="bodyMd"><strong>ID:</strong> {viewingCustomer.id || "-"}</Text>
-              <Text as="p" variant="bodyMd"><strong>Name:</strong> {viewingCustomer.name || "-"}</Text>
-              <Text as="p" variant="bodyMd"><strong>Email:</strong> {viewingCustomer.email || "-"}</Text>
-              <Text as="p" variant="bodyMd"><strong>Total Earned Points:</strong> {Number(viewingCustomer.totalEarnedPoints || 0).toFixed(2)}</Text>
-              <Text as="p" variant="bodyMd"><strong>Total Redeemed Points:</strong> {Number(viewingCustomer.totalRedeemedPoints || 0).toFixed(2)}</Text>
-              <Text as="p" variant="bodyMd"><strong>Available Points:</strong> {Number(viewingCustomer.availablePoints || 0).toFixed(2)}</Text>
-              <Text as="p" variant="bodyMd"><strong>Eligible:</strong> {viewingCustomer.eligibleForLoyalty ? "Yes" : "No"}</Text>
-              <Text as="p" variant="bodyMd"><strong>Birthday:</strong> {viewingCustomer.birthday || "-"}</Text>
-              <Text as="p" variant="bodyMd"><strong>Anniversary:</strong> {viewingCustomer.anniversary || "-"}</Text>
-              <Text as="p" variant="bodyMd"><strong>Referral Code:</strong> {viewingCustomer.referralCode || "-"}</Text>
-              <Text as="p" variant="bodyMd"><strong>Used Referral Code:</strong> {viewingCustomer.usedReferralCode || "-"}</Text>
+              <div style={{ display: "grid", gap: 4 }}>
+                <Text as="p" variant="bodyMd"><strong>ID:</strong> {viewingCustomer.id || "-"}</Text>
+                <Text as="p" variant="bodyMd"><strong>Name:</strong> {viewingCustomer.name || "-"}</Text>
+                <Text as="p" variant="bodyMd"><strong>Email:</strong> {viewingCustomer.email || "-"}</Text>
+              </div>
+
+              {viewingCustomerEventsError ? (
+                <Banner tone="critical">
+                  <p>{viewingCustomerEventsError}</p>
+                </Banner>
+              ) : null}
+
+              {viewingCustomerEventsLoading ? (
+                <Text as="p" variant="bodyMd">Loading event history...</Text>
+              ) : viewingCustomerEvents.length ? (
+                <Table
+                  columns={[
+                    "Date",
+                    "Event Name",
+                    "Amount",
+                    "Points Earned",
+                    "Points Redeemed",
+                    "Points Left",
+                  ]}
+                  rows={viewingCustomerEvents.map((event) => [
+                    event.date ? String(event.date).slice(0, 10) : "-",
+                    event.eventName || "-",
+                    Number(event.amount || 0).toFixed(2),
+                    Number(event.pointsEarned || 0).toFixed(2),
+                    Number(event.pointsRedeemed || 0).toFixed(2),
+                    Number(event.pointsLeft || 0).toFixed(2),
+                  ])}
+                  emptyLabel="No event history found"
+                />
+              ) : (
+                <Text as="p" variant="bodyMd">No event history found for this customer.</Text>
+              )}
             </div>
           )}
         </Modal.Section>
@@ -1998,34 +2154,60 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           <input
             style={ui.input}
             placeholder="Email"
+            value={giftcardsEmailSearch}
+            onChange={(event) => setGiftcardsEmailSearch(event.target.value)}
           />
 
           <input
             style={ui.input}
             placeholder="Code"
+            value={giftcardsCodeSearch}
+            onChange={(event) => setGiftcardsCodeSearch(event.target.value)}
           />
 
-          <Button>Filter</Button>
+          <Button onClick={() => {
+            loadGiftcards({ email: giftcardsEmailSearch, code: giftcardsCodeSearch });
+            setGiftcardsPage(1);
+          }}>
+            Filter
+          </Button>
         </div>
 
-        <Button variant="primary">
+        <Button variant="primary" onClick={exportGiftcardsCsv} disabled={!giftcardsRows.length}>
           Export CSV
         </Button>
       </div>
 
+      {giftcardsError ? (
+        <div style={{ marginBottom: 12 }}>
+          <Banner tone="critical">
+            <p>{giftcardsError}</p>
+          </Banner>
+        </div>
+      ) : null}
+
       <PaginatedTable
         columns={[
-          "Customer",
+          "User Name",
           "Email",
           "Code",
+          "Amount",
           "Status",
           "Created",
         ]}
-        rows={[]}
+        rows={giftcardsRows.map((row) => [
+          row.customerName || "-",
+          row.email || "-",
+          row.code || "-",
+          Number(row.amount || 0).toFixed(2),
+          row.status || "-",
+          row.created ? String(row.created).slice(0, 10) : "-",
+        ])}
         page={giftcardsPage}
         setPage={setGiftcardsPage}
         perPage={giftcardsPerPage}
         setPerPage={setGiftcardsPerPage}
+        emptyLabel={giftcardsLoading ? "Loading giftcards..." : "No records to display"}
       />
     </LegacyCard>
   );

@@ -25,6 +25,10 @@ function normalizeWholeNumber(input, fallback = 0) {
   return Math.max(0, Math.floor(toNumber(input, fallback)));
 }
 
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj || {}, key);
+}
+
 function formatDateOnly(date) {
   return date.toISOString().slice(0, 10);
 }
@@ -227,18 +231,29 @@ export default async function handler(req, res) {
     await ensureEventsTable(client);
     await ensureConfigTable(client);
 
+    const source = cleanText(req.body?.source).toLowerCase();
+    const isAdminSave = source === "admin";
     const customerId = parseCustomerId(req.body?.customerId);
     const customerEmail = cleanText(req.body?.customerEmail);
     const requestedCustomerName = cleanText(req.body?.customerName);
     const birthday = normalizeDate(req.body?.birthday);
     const anniversary = normalizeDate(req.body?.anniversary);
+    const hasEligibleForLoyalty = hasOwn(req.body, "eligibleForLoyalty");
+    const requestedEligibleForLoyalty = Boolean(req.body?.eligibleForLoyalty);
+    const hasReferralCode = hasOwn(req.body, "referralCode");
+    const hasUsedReferralCode = hasOwn(req.body, "usedReferralCode");
+    const requestedReferralCode = cleanText(req.body?.referralCode);
+    const requestedUsedReferralCode = cleanText(req.body?.usedReferralCode);
+    const hasEarnedPoints = hasOwn(req.body, "totalEarnedPoints");
+    const hasRedeemedPoints = hasOwn(req.body, "totalRedeemedPoints");
+    const hasAvailablePoints = hasOwn(req.body, "availablePoints");
 
     if (!customerId) {
       await client.query("ROLLBACK");
       return res.status(400).json({ error: "customerId is required" });
     }
 
-    if (!birthday || !anniversary) {
+    if (!isAdminSave && (!birthday || !anniversary)) {
       await client.query("ROLLBACK");
       return res.status(400).json({ error: "Birthday and anniversary are required." });
     }
@@ -248,6 +263,9 @@ export default async function handler(req, res) {
         SELECT
           customer_name,
           customer_email,
+          customer_referral_code,
+          customer_used_referral_code,
+          customer_eligible_for_loyalty,
           total_earned_points,
           total_redeemed_points,
           available_points
@@ -265,107 +283,123 @@ export default async function handler(req, res) {
       customerEmail ||
       `Customer ${customerId}`;
     const finalCustomerEmail = customerEmail || cleanText(existingCustomer.customer_email) || null;
-
-    const config = await loadProfileAwardConfig(client);
-    const birthdayEvent = await loadEventDefinition(client, 9);
-    const anniversaryEvent = await loadEventDefinition(client, 10);
-
-    if (!birthdayEvent?.name || !anniversaryEvent?.name) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        error: "Birthday and anniversary events are missing in netst_events_table for event IDs 9 and 10.",
-      });
-    }
-
-    const existingAwards = await loadExistingAwards(client, customerId, [9, 10]);
-    let totalEarnedPoints = toNumber(existingCustomer.total_earned_points, 0);
-    let totalRedeemedPoints = toNumber(existingCustomer.total_redeemed_points, 0);
-    let availablePoints = toNumber(existingCustomer.available_points, 0);
+    const finalEligibleForLoyalty = hasEligibleForLoyalty
+      ? requestedEligibleForLoyalty
+      : true;
+    const finalReferralCode = hasReferralCode
+      ? requestedReferralCode || null
+      : cleanText(existingCustomer.customer_referral_code) || null;
+    const finalUsedReferralCode = hasUsedReferralCode
+      ? requestedUsedReferralCode || null
+      : cleanText(existingCustomer.customer_used_referral_code) || null;
+    let totalEarnedPoints = hasEarnedPoints
+      ? toNumber(req.body?.totalEarnedPoints, 0)
+      : toNumber(existingCustomer.total_earned_points, 0);
+    let totalRedeemedPoints = hasRedeemedPoints
+      ? toNumber(req.body?.totalRedeemedPoints, 0)
+      : toNumber(existingCustomer.total_redeemed_points, 0);
+    let availablePoints = hasAvailablePoints
+      ? toNumber(req.body?.availablePoints, 0)
+      : toNumber(existingCustomer.available_points, 0);
     let newPointsAwarded = 0;
-    let transactionSeed = Date.now();
-
     const awardedEvents = [];
     const skippedEvents = [];
-    const profileEvents = [
-      {
-        eventId: birthdayEvent.id,
-        eventName: birthdayEvent.name,
-        points: config.birthdayPoints,
-        profileDate: birthday,
-      },
-      {
-        eventId: anniversaryEvent.id,
-        eventName: anniversaryEvent.name,
-        points: config.anniversaryPoints,
-        profileDate: anniversary,
-      },
-    ];
 
-    const pointsExpirationDate = buildPointsExpirationDate(config.pointsExpirationDays);
-    const pointsExpirationDaysValue =
-      config.pointsExpirationDays > 0 ? String(config.pointsExpirationDays) : null;
+    if (!isAdminSave) {
+      const config = await loadProfileAwardConfig(client);
+      const birthdayEvent = await loadEventDefinition(client, 9);
+      const anniversaryEvent = await loadEventDefinition(client, 10);
 
-    for (const event of profileEvents) {
-      if (existingAwards.has(event.eventId)) {
-        skippedEvents.push({
-          id: event.eventId,
-          name: event.eventName,
-          reason: "already_awarded",
+      if (!birthdayEvent?.name || !anniversaryEvent?.name) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          error: "Birthday and anniversary events are missing in netst_events_table for event IDs 9 and 10.",
         });
-        continue;
       }
 
-      const pointsEarned = toNumber(event.points, 0);
-      totalEarnedPoints += pointsEarned;
-      availablePoints = totalEarnedPoints - totalRedeemedPoints;
-      newPointsAwarded += pointsEarned;
+      const existingAwards = await loadExistingAwards(client, customerId, [9, 10]);
+      let transactionSeed = Date.now();
+      const profileEvents = [
+        {
+          eventId: birthdayEvent.id,
+          eventName: birthdayEvent.name,
+          points: config.birthdayPoints,
+          profileDate: birthday,
+        },
+        {
+          eventId: anniversaryEvent.id,
+          eventName: anniversaryEvent.name,
+          points: config.anniversaryPoints,
+          profileDate: anniversary,
+        },
+      ];
 
-      await client.query(
-        `
-          INSERT INTO netst_customer__event_details_table (
-            customer_id,
-            date_created,
-            event_name,
-            points_earned,
-            points_redeemed,
-            points_left,
-            transaction_id,
-            amount,
-            gift_code,
-            receiver_email,
-            refer_friend_id,
-            comments,
-            points_expiration_date,
-            points_expiration_days,
-            expired,
-            points_type,
-            created_at,
-            updated_at,
-            event_id
-          )
-          VALUES (
-            $1, CURRENT_DATE, $2, $3, 0, $4, $5, 0, NULL, $6, NULL, $7, $8, $9, FALSE, 'positive', NOW(), NOW(), $10
-          )
-        `,
-        [
-          toNumber(customerId, 0),
-          event.eventName,
+      const pointsExpirationDate = buildPointsExpirationDate(config.pointsExpirationDays);
+      const pointsExpirationDaysValue =
+        config.pointsExpirationDays > 0 ? String(config.pointsExpirationDays) : null;
+
+      for (const event of profileEvents) {
+        if (existingAwards.has(event.eventId)) {
+          skippedEvents.push({
+            id: event.eventId,
+            name: event.eventName,
+            reason: "already_awarded",
+          });
+          continue;
+        }
+
+        const pointsEarned = toNumber(event.points, 0);
+        totalEarnedPoints += pointsEarned;
+        availablePoints = totalEarnedPoints - totalRedeemedPoints;
+        newPointsAwarded += pointsEarned;
+
+        await client.query(
+          `
+            INSERT INTO netst_customer__event_details_table (
+              customer_id,
+              date_created,
+              event_name,
+              points_earned,
+              points_redeemed,
+              points_left,
+              transaction_id,
+              amount,
+              gift_code,
+              receiver_email,
+              refer_friend_id,
+              comments,
+              points_expiration_date,
+              points_expiration_days,
+              expired,
+              points_type,
+              created_at,
+              updated_at,
+              event_id
+            )
+            VALUES (
+              $1, CURRENT_DATE, $2, $3, 0, $4, $5, 0, NULL, $6, NULL, $7, $8, $9, FALSE, 'positive', NOW(), NOW(), $10
+            )
+          `,
+          [
+            toNumber(customerId, 0),
+            event.eventName,
+            pointsEarned,
+            availablePoints,
+            transactionSeed++,
+            finalCustomerEmail,
+            `Profile saved for ${event.eventName} date ${event.profileDate}`,
+            pointsExpirationDate,
+            pointsExpirationDaysValue,
+            event.eventId,
+          ]
+        );
+
+        awardedEvents.push({
+          id: event.eventId,
+          name: event.eventName,
           pointsEarned,
-          availablePoints,
-          transactionSeed++,
-          finalCustomerEmail,
-          `Profile saved for ${event.eventName} date ${event.profileDate}`,
-          pointsExpirationDate,
-          pointsExpirationDaysValue,
-          event.eventId,
-        ]
-      );
-
-      awardedEvents.push({
-        id: event.eventId,
-        name: event.eventName,
-        pointsEarned,
-      });
+        });
+      }
     }
 
     const saveCustomerRes = await client.query(
@@ -377,19 +411,23 @@ export default async function handler(req, res) {
           customer_birthday,
           customer_anniversary,
           customer_eligible_for_loyalty,
+          customer_referral_code,
+          customer_used_referral_code,
           total_earned_points,
           total_redeemed_points,
           available_points,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, $8, CURRENT_TIMESTAMP)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
         ON CONFLICT (customer_id)
         DO UPDATE SET
           customer_name = EXCLUDED.customer_name,
           customer_email = EXCLUDED.customer_email,
           customer_birthday = EXCLUDED.customer_birthday,
           customer_anniversary = EXCLUDED.customer_anniversary,
-          customer_eligible_for_loyalty = TRUE,
+          customer_eligible_for_loyalty = EXCLUDED.customer_eligible_for_loyalty,
+          customer_referral_code = EXCLUDED.customer_referral_code,
+          customer_used_referral_code = EXCLUDED.customer_used_referral_code,
           total_earned_points = EXCLUDED.total_earned_points,
           total_redeemed_points = EXCLUDED.total_redeemed_points,
           available_points = EXCLUDED.available_points,
@@ -401,6 +439,8 @@ export default async function handler(req, res) {
           customer_birthday,
           customer_anniversary,
           customer_eligible_for_loyalty,
+          customer_referral_code,
+          customer_used_referral_code,
           total_earned_points,
           total_redeemed_points,
           available_points
@@ -411,6 +451,9 @@ export default async function handler(req, res) {
         finalCustomerEmail,
         birthday,
         anniversary,
+        finalEligibleForLoyalty,
+        finalReferralCode,
+        finalUsedReferralCode,
         totalEarnedPoints,
         totalRedeemedPoints,
         availablePoints,
@@ -432,6 +475,8 @@ export default async function handler(req, res) {
         birthday: row.customer_birthday || null,
         anniversary: row.customer_anniversary || null,
         eligibleForLoyalty: Boolean(row.customer_eligible_for_loyalty),
+        referralCode: cleanText(row.customer_referral_code),
+        usedReferralCode: cleanText(row.customer_used_referral_code),
         totalEarnedPoints: toNumber(row.total_earned_points, 0),
         totalRedeemedPoints: toNumber(row.total_redeemed_points, 0),
         availablePoints: toNumber(row.available_points, 0),
