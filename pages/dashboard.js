@@ -1120,7 +1120,7 @@ export default function Dashboard() {
             background: #effbff;
             border: 1px solid #d9e0f3;
             border-radius: 10px;
-            padding: 12px 14px;
+            padding: 12px 30px;
           }
 
           .Polaris-Page-Header__Title {

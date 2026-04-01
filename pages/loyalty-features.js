@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Page, LegacyCard, FormLayout, Checkbox, TextField, Button, Banner } from "@shopify/polaris";
+import { Page, LegacyCard, FormLayout, TextField, Button, Banner } from "@shopify/polaris";
 
 function FeatureIcon({ kind }) {
   const common = {
@@ -190,6 +190,33 @@ const ui = {
     justifyContent: "flex-end",
     alignItems: "center",
   },
+  toggleButton: {
+    width: 58,
+    height: 32,
+    borderRadius: 999,
+    border: "none",
+    padding: 3,
+    display: "inline-flex",
+    alignItems: "center",
+    cursor: "pointer",
+    transition: "background 140ms ease",
+  },
+  toggleButtonOn: {
+    background: "linear-gradient(120deg, #6fba87, #5aa472)",
+    justifyContent: "flex-end",
+  },
+  toggleButtonOff: {
+    background: "linear-gradient(120deg, #ef6b6b, #d94d4d)",
+    justifyContent: "flex-start",
+  },
+  toggleKnob: {
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    background: "#ffffff",
+    boxShadow: "0 2px 6px rgba(15, 23, 42, 0.16)",
+    flexShrink: 0,
+  },
   labelSectionWrap: {
     marginTop: 14,
     paddingTop: 8,
@@ -363,8 +390,20 @@ export default function LoyaltyFeaturesPage() {
             {/* kept available for future use, but hidden for cleaner layout */}
           </div>
         </div>
-        <div style={ui.toggleWrap} className="toggle-checkbox green-toggle">
-          <Checkbox label="" checked={checked} onChange={onChange} />
+        <div style={ui.toggleWrap}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            aria-label={label}
+            style={{
+              ...ui.toggleButton,
+              ...(checked ? ui.toggleButtonOn : ui.toggleButtonOff),
+            }}
+            onClick={() => onChange(!checked)}
+          >
+            <span style={ui.toggleKnob} />
+          </button>
         </div>
       </div>
     );
@@ -512,65 +551,6 @@ export default function LoyaltyFeaturesPage() {
         .Polaris-Button--variantPrimary:hover {
           background: linear-gradient(120deg, #5aa472, #438f5e);
           border-color: transparent;
-        }
-
-        .toggle-checkbox .Polaris-Choice {
-          margin: 0;
-        }
-
-        .toggle-checkbox .Polaris-Choice__Control {
-          margin: 0;
-        }
-
-        .green-toggle .Polaris-Checkbox {
-          width: 46px;
-          min-width: 46px;
-          height: 28px;
-          position: relative;
-        }
-
-        .green-toggle .Polaris-Checkbox__Input {
-          width: 46px;
-          height: 28px;
-        }
-
-        .green-toggle .Polaris-Checkbox__Backdrop {
-          inset: 0;
-          border-radius: 999px;
-          border: 1px solid #cfe0d5;
-          background: #d9eee0;
-        }
-
-        .green-toggle .Polaris-Checkbox__Icon {
-          display: none;
-        }
-
-        .green-toggle .Polaris-Checkbox::after {
-          content: "";
-          position: absolute;
-          top: 4px;
-          left: 4px;
-          width: 18px;
-          height: 18px;
-          border-radius: 999px;
-          background: #ffffff;
-          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
-          transition: transform 140ms ease;
-          pointer-events: none;
-        }
-
-        .green-toggle .Polaris-Checkbox__Input + .Polaris-Checkbox__Backdrop {
-          background: #d9eee0;
-          border-color: #b9d8c2;
-        }
-
-        .green-toggle .Polaris-Checkbox__Input:checked + .Polaris-Checkbox__Backdrop {
-          background: linear-gradient(120deg, #6fba87, #5aa472);
-          border-color: transparent;
-        }
-
-        .green-toggle .Polaris-Checkbox:has(.Polaris-Checkbox__Input:checked)::after {
-          transform: translateX(18px);
         }
 
         @media (max-width: 900px) {
