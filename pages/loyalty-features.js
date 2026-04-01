@@ -210,8 +210,8 @@ const ui = {
     justifyContent: "flex-start",
   },
   toggleKnob: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     borderRadius: 999,
     background: "#ffffff",
     boxShadow: "0 2px 6px rgba(15, 23, 42, 0.16)",

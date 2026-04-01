@@ -160,11 +160,21 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   const [giftCardError, setGiftCardError] = useState("");
   const [giftCardSuccess, setGiftCardSuccess] = useState("");
   const [giftCardSubmitting, setGiftCardSubmitting] = useState(false);
+  const [referFriendEmail, setReferFriendEmail] = useState("");
+  const [referFriendError, setReferFriendError] = useState("");
+  const [referFriendSuccess, setReferFriendSuccess] = useState("");
+  const [referFriendSubmitting, setReferFriendSubmitting] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [data, setData] = useState({
     labels: {},
+    profile: {
+      birthday: null,
+      anniversary: null,
+      referralCode: "",
+      usedReferralCode: "",
+    },
     loyaltyPointsEarned: {
       totalEarnedPoints: 0,
       totalRedeemedPoints: 0,
@@ -216,6 +226,12 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
         setCustomerContext(nextCustomerContext);
         setData({
           labels: payload?.labels || {},
+          profile: payload?.profile || {
+            birthday: null,
+            anniversary: null,
+            referralCode: "",
+            usedReferralCode: "",
+          },
           loyaltyPointsEarned: payload?.loyaltyPointsEarned || {
             totalEarnedPoints: 0,
             totalRedeemedPoints: 0,
@@ -283,6 +299,12 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   };
   const redeemRows = data?.redeemHistory?.rows || [];
   const labels = data?.labels || {};
+  const profile = data?.profile || {
+    birthday: null,
+    anniversary: null,
+    referralCode: "",
+    usedReferralCode: "",
+  };
   const loyaltyTierRows = data?.loyaltyTiers?.rows || [];
   const loyaltyTierSummary = data?.loyaltyTiers?.summary || {
     currentTier: null,
@@ -324,6 +346,59 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     }
     return "";
   }, [availablePoints, enteredGiftCardPoints, giftCardPoints]);
+
+  async function handleShareReferralCode() {
+    setReferFriendError("");
+    setReferFriendSuccess("");
+
+    if (!API_BASE) {
+      setReferFriendError("Missing app URL for extension API");
+      return;
+    }
+
+    if (!cleanText(profile?.referralCode)) {
+      setReferFriendError("Referral code is not available.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanText(referFriendEmail))) {
+      setReferFriendError("Enter a valid email.");
+      return;
+    }
+
+    setReferFriendSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/loyalty/share-referral-code`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          customerId: customerContext?.customerId,
+          customerEmail: customerContext?.customerEmail,
+          customerName: customerContext?.customerName,
+          receiverEmail: cleanText(referFriendEmail),
+          referralCode: cleanText(profile?.referralCode),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || payload?.message || "Failed to share referral code");
+      }
+
+      setReferFriendSuccess(
+        payload?.emailSent
+          ? `Referral code ${cleanText(payload?.referralCode)} emailed to ${cleanText(payload?.receiverEmail)}.`
+          : cleanText(payload?.message || payload?.emailError || "Referral email could not be sent.")
+      );
+      setReferFriendEmail("");
+    } catch (err) {
+      setReferFriendError(err?.message || "Failed to share referral code");
+    } finally {
+      setReferFriendSubmitting(false);
+    }
+  }
 
   async function handleGenerateGiftCard() {
     setGiftCardError("");
@@ -575,15 +650,42 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           <s-stack direction="inline" gap="tight" alignItems="center">
             <s-text>Your Code:</s-text>
             <s-box background="subdued" borderRadius="small" padding="tight">
-              <s-text type="strong">REF1C4CA42</s-text>
+              <s-text type="strong">{cleanText(profile?.referralCode) || "-"}</s-text>
             </s-box>
           </s-stack>
 
           <s-box inlineSize="400px">
-            <s-text-field label="Enter email here..." />
+            <s-text-field
+              label="Enter email here..."
+              value={referFriendEmail}
+              onInput={(event) => {
+                setReferFriendEmail(event.currentTarget.value);
+                setReferFriendError("");
+                setReferFriendSuccess("");
+              }}
+            />
           </s-box>
 
-          <s-button variant="primary">Share & Earn</s-button>
+          {referFriendError ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="critical">{referFriendError}</s-text>
+            </s-box>
+          ) : null}
+
+          {referFriendSuccess ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="success">{referFriendSuccess}</s-text>
+            </s-box>
+          ) : null}
+
+          <s-button
+            variant="primary"
+            loading={referFriendSubmitting}
+            disabled={referFriendSubmitting || !cleanText(profile?.referralCode)}
+            onClick={handleShareReferralCode}
+          >
+            Share & Earn
+          </s-button>
         </s-stack>
       </s-box>
     );

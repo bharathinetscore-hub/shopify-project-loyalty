@@ -2271,11 +2271,11 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           <div>
             <h2 style={ui.sectionTitle}>loyalty eligible products</h2>
             <p style={ui.sectionSubtitle}>
-              View and export products where loyalty eligibility is enabled.
+              View and export eligible products.
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={ui.statPill}>Enabled Products: {enabledItems.length}</div>
+            <div style={ui.statPill}>Eligible Products: {enabledItems.length}</div>
             <button
               type="button"
               className={`eye-toggle-btn ${showEnabledItemsTable ? "active" : "inactive"}`}
