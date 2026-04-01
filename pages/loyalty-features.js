@@ -141,12 +141,13 @@ const ui = {
     padding: "10px 14px",
     background: "linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%)",
     boxShadow: "0 10px 22px rgba(15, 23, 42, 0.05)",
+    overflow: "hidden",
   },
   featureRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 14,
+    gap: 12,
     padding: "10px 2px",
     borderBottom: "1px solid #ecf0f4",
   },
@@ -158,6 +159,7 @@ const ui = {
     alignItems: "flex-start",
     gap: 12,
     minWidth: 0,
+    flex: "1 1 auto",
   },
   featureIconWrap: {
     width: 30,
@@ -180,6 +182,13 @@ const ui = {
     fontSize: 12,
     lineHeight: 1.45,
     color: "#7b8591",
+  },
+  toggleWrap: {
+    flex: "0 0 52px",
+    width: 52,
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
   labelSectionWrap: {
     marginTop: 14,
@@ -351,10 +360,10 @@ export default function LoyaltyFeaturesPage() {
           </div>
           <div>
             <p style={ui.featureCardTitle}>{label}</p>
-            <p style={ui.featureCardDesc}>{description}</p>
+            {/* kept available for future use, but hidden for cleaner layout */}
           </div>
         </div>
-        <div className="toggle-checkbox green-toggle">
+        <div style={ui.toggleWrap} className="toggle-checkbox green-toggle">
           <Checkbox label="" checked={checked} onChange={onChange} />
         </div>
       </div>
@@ -529,7 +538,7 @@ export default function LoyaltyFeaturesPage() {
           inset: 0;
           border-radius: 999px;
           border: 1px solid #cfe0d5;
-          background: #dce8df;
+          background: #d9eee0;
         }
 
         .green-toggle .Polaris-Checkbox__Icon {
@@ -548,6 +557,11 @@ export default function LoyaltyFeaturesPage() {
           box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
           transition: transform 140ms ease;
           pointer-events: none;
+        }
+
+        .green-toggle .Polaris-Checkbox__Input + .Polaris-Checkbox__Backdrop {
+          background: #d9eee0;
+          border-color: #b9d8c2;
         }
 
         .green-toggle .Polaris-Checkbox__Input:checked + .Polaris-Checkbox__Backdrop {
