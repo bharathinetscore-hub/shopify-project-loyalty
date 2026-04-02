@@ -74,6 +74,18 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       }
     }
 
+    function applyEligibleWidgetStyle(widget) {
+      widget.style.border = "1px solid #d6eadc";
+      widget.style.background = "linear-gradient(180deg, #f4fff7 0%, #eefaf2 100%)";
+      widget.style.color = "#166534";
+    }
+
+    function applyIneligibleWidgetStyle(widget) {
+      widget.style.border = "1px solid #e5e7eb";
+      widget.style.background = "#f9fafb";
+      widget.style.color = "#6b7280";
+    }
+
     async function loadProductData() {
       if (productDataPromise) return productDataPromise;
 
@@ -188,13 +200,29 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
           status: res.status,
           data,
         });
-        if (!res.ok || !data?.eligible || !toNumber(data?.points, 0)) {
+
+        if (!res.ok) {
+          debugWarn("reward preview request failed", res.status, data);
+          hideWidget();
+          return;
+        }
+
+        if (data && data.eligible === false) {
+          widget.textContent = "Product not eligible";
+          applyIneligibleWidgetStyle(widget);
+          widget.style.display = "block";
+          debugLog("widget displayed (ineligible)", widget.textContent);
+          return;
+        }
+
+        if (!data?.eligible || !toNumber(data?.points, 0)) {
           debugWarn("reward preview not eligible or no points", data);
           hideWidget();
           return;
         }
 
         widget.textContent = cleanText(data?.message) || `Earn ${Math.max(0, Math.round(Number(data.points) || 0))} points`;
+        applyEligibleWidgetStyle(widget);
         widget.style.display = "block";
         debugLog("widget displayed", widget.textContent);
       } catch (error) {
