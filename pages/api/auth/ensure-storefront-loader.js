@@ -40,10 +40,18 @@ async function ensureStorefrontScriptTag(shop, accessToken, appHost) {
     throw new Error(`Unable to read ScriptTags (${checkRes.status}): ${checkBody || "no response body"}`);
   }
 
-  const alreadyInstalled = (checkData.script_tags || []).some(
+  const existingTags = (checkData.script_tags || []).map((tag) => ({
+    id: tag?.id || null,
+    src: String(tag?.src || ""),
+    event: String(tag?.event || ""),
+  }));
+
+  const alreadyInstalled = existingTags.some(
     (tag) => String(tag?.src || "").replace(/\/+$/, "") === scriptSrc
   );
-  if (alreadyInstalled) return { created: false };
+  if (alreadyInstalled) {
+    return { created: false, alreadyInstalled: true, existingTags, scriptSrc };
+  }
 
   const createRes = await fetch(`https://${shop}/admin/api/${apiVersion}/script_tags.json`, {
     method: "POST",
@@ -68,7 +76,14 @@ async function ensureStorefrontScriptTag(shop, accessToken, appHost) {
     throw new Error(`Unable to create ScriptTag (${createRes.status}): ${JSON.stringify(createData)}`);
   }
 
-  return { created: true };
+  const createData = await createRes.json().catch(() => ({}));
+  return {
+    created: true,
+    alreadyInstalled: false,
+    existingTags,
+    scriptSrc,
+    createdTagId: createData?.script_tag?.id || null,
+  };
 }
 
 /**
@@ -172,9 +187,15 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
+      shop,
+      appHost,
       scriptTagCreated,
+      scriptTagAlreadyInstalled: scriptTagResult.alreadyInstalled === true,
       scriptTagSkipped: scriptTagResult.skipped === true,
       scriptTagSkipReason: scriptTagResult.reason || null,
+      scriptTagSrc: scriptTagResult.scriptSrc || `${appHost}/loader.js`,
+      scriptTagCreatedTagId: scriptTagResult.createdTagId || null,
+      existingScriptTags: scriptTagResult.existingTags || [],
       webhookCreated,
       webhookSkipped: webhookResult.skipped === true,
       webhookSkipReason: webhookResult.reason || null,

@@ -1,6 +1,7 @@
 // Storefront loyalty helper for Shopify product pages.
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   (function () {
+    const DEBUG_PREFIX = "[NetScore Loyalty loader]";
     const API_BASE = (() => {
       try {
         return new URL(document.currentScript?.src || "", window.location.origin).origin;
@@ -12,6 +13,14 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     const WIDGET_ID = "netscore-loyalty-product-preview";
     let productDataPromise = null;
     let updateTimer = null;
+
+    function debugLog(...args) {
+      console.log(DEBUG_PREFIX, ...args);
+    }
+
+    function debugWarn(...args) {
+      console.warn(DEBUG_PREFIX, ...args);
+    }
 
     function cleanText(value) {
       return String(value || "").trim();
@@ -69,12 +78,27 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       if (productDataPromise) return productDataPromise;
 
       const url = `${window.location.pathname.replace(/\/$/, "")}.js`;
+      debugLog("loading product JSON", url);
       productDataPromise = fetch(url, {
         credentials: "same-origin",
         headers: { Accept: "application/json" },
       })
-        .then((res) => (res.ok ? res.json() : null))
-        .catch(() => null);
+        .then(async (res) => {
+          if (!res.ok) {
+            debugWarn("product JSON load failed", res.status, url);
+            return null;
+          }
+          const data = await res.json().catch(() => null);
+          debugLog("product JSON loaded", {
+            productId: parseNumericId(data?.id),
+            variants: Array.isArray(data?.variants) ? data.variants.length : 0,
+          });
+          return data;
+        })
+        .catch((error) => {
+          debugWarn("product JSON fetch error", error);
+          return null;
+        });
 
       return productDataPromise;
     }
@@ -114,31 +138,13 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       return 0;
     }
 
-    function getCustomerContext() {
-      const customerIdCandidates = [
-        window.ShopifyAnalytics?.meta?.page?.customerId,
-        window.meta?.page?.customerId,
-        window.__st?.cid,
-        window.Shopify?.customer?.id,
-      ];
-
-      const customerEmailCandidates = [
-        window.Shopify?.customer?.email,
-      ];
-
-      const customerId = customerIdCandidates.map(parseNumericId).find(Boolean) || "";
-      const customerEmail = customerEmailCandidates.map(cleanText).find(Boolean) || "";
-
-      return {
-        customerId,
-        customerEmail,
-        loggedIn: Boolean(customerId || customerEmail),
-      };
-    }
-
     async function updateRewardPreview() {
       const form = getProductForm();
       if (!form || !API_BASE) {
+        debugWarn("missing form or API base", {
+          hasForm: Boolean(form),
+          apiBase: API_BASE,
+        });
         hideWidget();
         return;
       }
@@ -151,9 +157,12 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
         parseNumericId(productData?.id) ||
         parseNumericId(window.ShopifyAnalytics?.meta?.product?.id);
       const productPrice = getSelectedVariantPrice(form, productData);
-      const customer = getCustomerContext();
 
       if (!productId || productPrice <= 0) {
+        debugWarn("missing productId or productPrice", {
+          productId,
+          productPrice,
+        });
         hideWidget();
         return;
       }
@@ -164,29 +173,32 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
           productPrice: String(productPrice),
         });
 
-        if (customer.customerId) params.set("customerId", customer.customerId);
-        if (customer.customerEmail) params.set("customerEmail", customer.customerEmail);
+        const requestUrl = `${API_BASE}/api/loyalty/get-product-reward-preview?${params.toString()}`;
+        debugLog("calling reward preview API", requestUrl);
 
-        const res = await fetch(
-          `${API_BASE}/api/loyalty/get-product-reward-preview?${params.toString()}`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-          }
-        );
+        const res = await fetch(requestUrl, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        });
 
         const data = await res.json().catch(() => ({}));
+        debugLog("reward preview API response", {
+          status: res.status,
+          data,
+        });
         if (!res.ok || !data?.eligible || !toNumber(data?.points, 0)) {
+          debugWarn("reward preview not eligible or no points", data);
           hideWidget();
           return;
         }
 
         widget.textContent = cleanText(data?.message) || `Earn ${Math.max(0, Math.round(Number(data.points) || 0))} points`;
         widget.style.display = "block";
+        debugLog("widget displayed", widget.textContent);
       } catch (error) {
-        console.warn("Loyalty preview load failed:", error);
+        debugWarn("loyalty preview load failed", error);
         hideWidget();
       }
     }
@@ -199,6 +211,10 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     }
 
     function boot() {
+      debugLog("booting loader", {
+        apiBase: API_BASE,
+        path: window.location.pathname,
+      });
       scheduleUpdate();
 
       document.addEventListener("change", scheduleUpdate, true);

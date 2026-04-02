@@ -69,6 +69,10 @@ function MyApp({ Component, pageProps }) {
     if (!shopDomain) return;
 
     fetch(`/api/auth/ensure-storefront-loader?shop=${encodeURIComponent(shopDomain)}`)
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        console.log("ensure-storefront-loader response:", data);
+      })
       .catch((error) => {
         console.error("Failed to ensure storefront loader:", error);
       });
