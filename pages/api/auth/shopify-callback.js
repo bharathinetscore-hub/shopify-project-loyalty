@@ -58,6 +58,11 @@ export default async function handler(req, res) {
     }
 
     await setShopAccessToken(shop, payload.access_token);
+    await fetch(
+      `${appHost}/api/auth/ensure-storefront-loader?shop=${encodeURIComponent(shop)}`
+    ).catch((error) => {
+      console.error("ensure storefront loader after oauth failed:", error);
+    });
 
     const backParams = new URLSearchParams({ shop });
     if (host) {

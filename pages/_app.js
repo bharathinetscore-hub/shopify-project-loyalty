@@ -66,6 +66,15 @@ function MyApp({ Component, pageProps }) {
   }, []);
 
   useEffect(() => {
+    if (!shopDomain) return;
+
+    fetch(`/api/auth/ensure-storefront-loader?shop=${encodeURIComponent(shopDomain)}`)
+      .catch((error) => {
+        console.error("Failed to ensure storefront loader:", error);
+      });
+  }, [shopDomain]);
+
+  useEffect(() => {
     if (!config?.host) return;
 
     try {

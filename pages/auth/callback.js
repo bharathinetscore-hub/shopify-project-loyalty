@@ -54,6 +54,9 @@ export async function getServerSideProps(context) {
     }
 
     await setShopAccessToken(shop, payload.access_token);
+    await fetch(
+      `${appHost}/api/auth/ensure-storefront-loader?shop=${encodeURIComponent(shop)}`
+    ).catch(() => null);
 
     const params = new URLSearchParams({ shop });
     if (host) {
