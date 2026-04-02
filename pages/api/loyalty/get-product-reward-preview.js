@@ -90,70 +90,6 @@ async function getGlobalMultiplier() {
   return toNumber(configRes.rows[0]?.each_point_value, 1);
 }
 
-async function getCustomerContext(customerId, customerEmail) {
-  if (!customerId && !customerEmail) {
-    return {
-      found: false,
-      eligible: false,
-      availablePoints: 0,
-      tierMultiplier: null,
-      tierName: "",
-    };
-  }
-
-  const customerRes = await pool.query(
-    `
-    SELECT
-      customer_id,
-      customer_email,
-      customer_eligible_for_loyalty,
-      available_points
-    FROM netst_customers_table
-    WHERE (
-      ($1::text <> '' AND regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $1)
-      OR ($2::text <> '' AND LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($2)))
-    )
-    ORDER BY id DESC
-    LIMIT 1
-    `,
-    [customerId || "", customerEmail || ""]
-  );
-
-  const customer = customerRes.rows[0];
-  if (!customer) {
-    return {
-      found: false,
-      eligible: false,
-      availablePoints: 0,
-      tierMultiplier: null,
-      tierName: "",
-    };
-  }
-
-  const availablePoints = Math.max(0, toNumber(customer.available_points, 0));
-  const tierRes = await pool.query(
-    `
-    SELECT tier_name, points_per_dollar
-    FROM netst_loyalty_tiers_table
-    WHERE COALESCE(status, false) = true
-      AND COALESCE(threshold, 0) <= $1
-    ORDER BY COALESCE(threshold, 0) DESC, COALESCE(level, 0) DESC, id DESC
-    LIMIT 1
-    `,
-    [availablePoints]
-  );
-
-  return {
-    found: true,
-    eligible: Boolean(customer.customer_eligible_for_loyalty),
-    availablePoints,
-    tierMultiplier: tierRes.rows.length
-      ? toNumber(tierRes.rows[0]?.points_per_dollar, null)
-      : null,
-    tierName: cleanText(tierRes.rows[0]?.tier_name),
-  };
-}
-
 function getRequestValue(req, key) {
   if (req.method === "GET") {
     return req.query?.[key];
@@ -192,8 +128,6 @@ export default async function handler(req, res) {
     }
 
     const productId = parseProductId(getRequestValue(req, "productId"));
-    const customerId = parseCustomerId(getRequestValue(req, "customerId"));
-    const customerEmail = cleanText(getRequestValue(req, "customerEmail"));
     const productPrice = toNumber(getRequestValue(req, "productPrice"), 0);
     if (!productId || productPrice <= 0) {
       return res.status(200).json({
@@ -235,30 +169,22 @@ export default async function handler(req, res) {
       });
     }
 
-    const customer = await getCustomerContext(customerId, customerEmail);
-
     const globalMultiplier = await getGlobalMultiplier();
-    const tierMultiplier =
-      customer.found && customer.eligible ? customer.tierMultiplier : null;
     const enableCollection = Boolean(item.enable_collection_type);
     const collectionType = cleanText(item.collection_type).toLowerCase();
 
     let calculatedPoints = 0;
 
     if (!enableCollection) {
-      calculatedPoints = productPrice * (tierMultiplier ?? globalMultiplier);
+      calculatedPoints = productPrice * globalMultiplier;
     } else if (collectionType === "points") {
       calculatedPoints = toNumber(item.points_based_points, 0);
     } else if (collectionType === "amount") {
       const skuMultiplier = toNumber(item.sku_based_points, 0);
-      const bestMultiplier = Math.max(
-        tierMultiplier ?? 0,
-        globalMultiplier,
-        skuMultiplier
-      );
+      const bestMultiplier = Math.max(globalMultiplier, skuMultiplier);
       calculatedPoints = productPrice * bestMultiplier;
     } else {
-      calculatedPoints = productPrice * (tierMultiplier ?? globalMultiplier);
+      calculatedPoints = productPrice * globalMultiplier;
     }
 
     const points = Math.max(0, Math.round(calculatedPoints));
@@ -267,13 +193,7 @@ export default async function handler(req, res) {
       points,
       message: points > 0 ? `Earn ${points} points` : "",
       meta: {
-        previewForGuest: !customer.found,
-        previewForIneligibleCustomer: customer.found && !customer.eligible,
-        availablePoints: customer.availablePoints,
-        tierName: customer.tierName,
-        tierMultiplier,
         globalMultiplier,
-        loginToSeePointsEnabled: features.loginToSeePoints,
         collectionType: enableCollection ? collectionType || "default" : "disabled",
       },
     });
