@@ -86,6 +86,18 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       widget.style.color = "#6b7280";
     }
 
+    function getIneligibleMessage(data) {
+      const reason = cleanText(data?.reason).toLowerCase();
+
+      if (reason === "product_not_found") return "Product not found in loyalty items";
+      if (reason === "product_ineligible") return "Product is disabled for loyalty";
+      if (reason === "loyalty_disabled") return "Loyalty feature is disabled";
+      if (reason === "license_expired") return "Loyalty license is expired";
+      if (reason === "invalid_product") return "Invalid product data from storefront";
+
+      return cleanText(data?.message) || "Product not eligible";
+    }
+
     async function loadProductData() {
       if (productDataPromise) return productDataPromise;
 
@@ -208,10 +220,13 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
         }
 
         if (data && data.eligible === false) {
-          widget.textContent = "Product not eligible";
+          widget.textContent = getIneligibleMessage(data);
           applyIneligibleWidgetStyle(widget);
           widget.style.display = "block";
-          debugLog("widget displayed (ineligible)", widget.textContent);
+          debugLog("widget displayed (ineligible)", {
+            text: widget.textContent,
+            reason: data?.reason || "",
+          });
           return;
         }
 
