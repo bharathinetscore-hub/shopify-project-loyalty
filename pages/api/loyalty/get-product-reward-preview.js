@@ -1,85 +1,216 @@
 import pool from "../../../db/db";
-import cors from "../../../lib/cors";
+
+function setStorefrontCors(req, res) {
+  const origin = String(req.headers.origin || "").trim();
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    req.headers["access-control-request-headers"] || "Content-Type, Authorization"
+  );
+}
 
 function toNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
 }
 
+function cleanText(value) {
+  return String(value || "").trim();
+}
+
 function parseProductId(value) {
-  const id = String(value || "").match(/\d+/)?.[0] || "";
-  return id;
+  return cleanText(value).match(/\d+/)?.[0] || "";
 }
 
 function parseCustomerId(value) {
-  return String(value || "").match(/\d+/)?.[0] || "";
+  return cleanText(value).match(/\d+/)?.[0] || "";
+}
+
+async function resolveLicenseStatus() {
+  const tables = ['"netst-lmp-users"', '"netst-lmp-netsuite-users"'];
+
+  for (const tableName of tables) {
+    const result = await pool.query(
+      `
+      SELECT plan_end_date
+      FROM ${tableName}
+      WHERE plan_end_date IS NOT NULL
+      ORDER BY updated_at DESC NULLS LAST, plan_end_date DESC NULLS LAST
+      LIMIT 1
+      `
+    );
+
+    const row = result.rows[0];
+    if (!row?.plan_end_date) continue;
+
+    const planEnd = new Date(row.plan_end_date);
+    if (Number.isNaN(planEnd.getTime())) {
+      return { expired: true, planEnd: row.plan_end_date };
+    }
+
+    return {
+      expired: Date.now() > planEnd.getTime(),
+      planEnd: row.plan_end_date,
+    };
+  }
+
+  return { expired: true, planEnd: null };
+}
+
+async function getFeatureSettings() {
+  const featuresRes = await pool.query(
+    `
+    SELECT loyalty_eligible, login_to_see_points
+    FROM netst_features_table
+    ORDER BY id DESC
+    LIMIT 1
+    `
+  );
+
+  return {
+    loyaltyEligible: Boolean(featuresRes.rows[0]?.loyalty_eligible),
+    loginToSeePoints: Boolean(featuresRes.rows[0]?.login_to_see_points),
+  };
 }
 
 async function getGlobalMultiplier() {
   const configRes = await pool.query(
-    "SELECT each_point_value FROM netst_loyalty_config_table ORDER BY id DESC LIMIT 1"
+    `
+    SELECT each_point_value
+    FROM netst_loyalty_config_table
+    ORDER BY id DESC
+    LIMIT 1
+    `
   );
+
   return toNumber(configRes.rows[0]?.each_point_value, 1);
 }
 
-async function isGlobalLoyaltyEligible() {
-  const featuresRes = await pool.query(
-    "SELECT loyalty_eligible FROM netst_features_table ORDER BY id ASC LIMIT 1"
-  );
-  return Boolean(featuresRes.rows[0]?.loyalty_eligible);
-}
-
-async function getCustomerTierMultiplier(customerId) {
-  if (!customerId) return null;
+async function getCustomerContext(customerId, customerEmail) {
+  if (!customerId && !customerEmail) {
+    return {
+      found: false,
+      eligible: false,
+      availablePoints: 0,
+      tierMultiplier: null,
+      tierName: "",
+    };
+  }
 
   const customerRes = await pool.query(
     `
-    SELECT total_earned_points
+    SELECT
+      customer_id,
+      customer_email,
+      customer_eligible_for_loyalty,
+      available_points
     FROM netst_customers_table
-    WHERE customer_id = $1
+    WHERE (
+      ($1::text <> '' AND regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $1)
+      OR ($2::text <> '' AND LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($2)))
+    )
+    ORDER BY id DESC
     LIMIT 1
     `,
-    [customerId]
+    [customerId || "", customerEmail || ""]
   );
 
-  if (!customerRes.rows.length) return null;
+  const customer = customerRes.rows[0];
+  if (!customer) {
+    return {
+      found: false,
+      eligible: false,
+      availablePoints: 0,
+      tierMultiplier: null,
+      tierName: "",
+    };
+  }
 
-  const earnedPoints = toNumber(customerRes.rows[0]?.total_earned_points, 0);
+  const availablePoints = Math.max(0, toNumber(customer.available_points, 0));
   const tierRes = await pool.query(
     `
-    SELECT points_per_dollar
+    SELECT tier_name, points_per_dollar
     FROM netst_loyalty_tiers_table
     WHERE COALESCE(status, false) = true
       AND COALESCE(threshold, 0) <= $1
-    ORDER BY COALESCE(threshold, 0) DESC, id DESC
+    ORDER BY COALESCE(threshold, 0) DESC, COALESCE(level, 0) DESC, id DESC
     LIMIT 1
     `,
-    [earnedPoints]
+    [availablePoints]
   );
 
-  if (!tierRes.rows.length) return null;
-  return toNumber(tierRes.rows[0]?.points_per_dollar, null);
+  return {
+    found: true,
+    eligible: Boolean(customer.customer_eligible_for_loyalty),
+    availablePoints,
+    tierMultiplier: tierRes.rows.length
+      ? toNumber(tierRes.rows[0]?.points_per_dollar, null)
+      : null,
+    tierName: cleanText(tierRes.rows[0]?.tier_name),
+  };
+}
+
+function getRequestValue(req, key) {
+  if (req.method === "GET") {
+    return req.query?.[key];
+  }
+  return req.body?.[key];
 }
 
 export default async function handler(req, res) {
-  if (cors(req, res)) return;
+  setStorefrontCors(req, res);
 
-  if (req.method !== "POST") {
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const globalEligibilityEnabled = await isGlobalLoyaltyEligible();
-    if (!globalEligibilityEnabled) {
-      return res.status(200).json({ eligible: false, points: 0 });
+    const license = await resolveLicenseStatus();
+    if (license.expired) {
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "license_expired",
+      });
     }
 
-    const productId = parseProductId(req.body?.productId);
-    const customerId = parseCustomerId(req.body?.customerId);
-    const productPrice = toNumber(req.body?.productPrice, 0);
+    const features = await getFeatureSettings();
+    if (!features.loyaltyEligible) {
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "loyalty_disabled",
+      });
+    }
+
+    const productId = parseProductId(getRequestValue(req, "productId"));
+    const customerId = parseCustomerId(getRequestValue(req, "customerId"));
+    const customerEmail = cleanText(getRequestValue(req, "customerEmail"));
+    const productPrice = toNumber(getRequestValue(req, "productPrice"), 0);
+    const isLoggedIn = Boolean(customerId || customerEmail);
+
+    if (features.loginToSeePoints && !isLoggedIn) {
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "login_required",
+      });
+    }
 
     if (!productId || productPrice <= 0) {
-      return res.status(200).json({ eligible: false, points: 0 });
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "invalid_product",
+      });
     }
 
     const productRes = await pool.query(
@@ -98,43 +229,67 @@ export default async function handler(req, res) {
     );
 
     if (!productRes.rows.length) {
-      return res.status(200).json({ eligible: false, points: 0 });
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "product_not_found",
+      });
     }
 
     const item = productRes.rows[0];
-    const eligible = Boolean(item.is_eligible_for_loyalty_program);
-    if (!eligible) {
-      return res.status(200).json({ eligible: false, points: 0 });
+    if (!Boolean(item.is_eligible_for_loyalty_program)) {
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "product_ineligible",
+      });
+    }
+
+    const customer = await getCustomerContext(customerId, customerEmail);
+    if (!customer.found || !customer.eligible) {
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "customer_ineligible",
+      });
     }
 
     const globalMultiplier = await getGlobalMultiplier();
-    const tierMultiplier = await getCustomerTierMultiplier(customerId);
+    const tierMultiplier = customer.tierMultiplier;
     const enableCollection = Boolean(item.enable_collection_type);
-    const collectionType = String(item.collection_type || "").toLowerCase();
+    const collectionType = cleanText(item.collection_type).toLowerCase();
 
     let calculatedPoints = 0;
 
-    // Rule 1: collection disabled -> price * (tier || config)
     if (!enableCollection) {
-      const multiplier = tierMultiplier ?? globalMultiplier;
-      calculatedPoints = productPrice * multiplier;
-    }
-    // Rule 2: fixed points
-    else if (collectionType === "points") {
+      calculatedPoints = productPrice * (tierMultiplier ?? globalMultiplier);
+    } else if (collectionType === "points") {
       calculatedPoints = toNumber(item.points_based_points, 0);
-    }
-    // Rule 3: amount based -> price * max(tier, config, sku)
-    else if (collectionType === "amount") {
+    } else if (collectionType === "amount") {
       const skuMultiplier = toNumber(item.sku_based_points, 0);
-      const bestMultiplier = Math.max(tierMultiplier ?? 0, globalMultiplier, skuMultiplier);
+      const bestMultiplier = Math.max(
+        tierMultiplier ?? 0,
+        globalMultiplier,
+        skuMultiplier
+      );
       calculatedPoints = productPrice * bestMultiplier;
     } else {
-      const multiplier = tierMultiplier ?? globalMultiplier;
-      calculatedPoints = productPrice * multiplier;
+      calculatedPoints = productPrice * (tierMultiplier ?? globalMultiplier);
     }
 
-    const points = Math.round(calculatedPoints);
-    return res.status(200).json({ eligible: true, points: Math.max(0, points) });
+    const points = Math.max(0, Math.round(calculatedPoints));
+    return res.status(200).json({
+      eligible: points > 0,
+      points,
+      message: points > 0 ? `Earn ${points} points` : "",
+      meta: {
+        availablePoints: customer.availablePoints,
+        tierName: customer.tierName,
+        tierMultiplier,
+        globalMultiplier,
+        collectionType: enableCollection ? collectionType || "default" : "disabled",
+      },
+    });
   } catch (error) {
     console.error("get-product-reward-preview error:", error);
     return res.status(500).json({ error: "Failed to calculate reward preview" });
