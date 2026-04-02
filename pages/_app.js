@@ -72,6 +72,10 @@ function MyApp({ Component, pageProps }) {
       .catch((error) => {
         console.error("Failed to ensure storefront loader:", error);
       });
+    fetch(`/api/auth/ensure-product-page-points?shop=${encodeURIComponent(shopDomain)}`)
+      .catch((error) => {
+        console.error("Failed to ensure product page points:", error);
+      });
   }, [shopDomain]);
 
   useEffect(() => {

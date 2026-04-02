@@ -63,6 +63,11 @@ export default async function handler(req, res) {
     ).catch((error) => {
       console.error("ensure storefront loader after oauth failed:", error);
     });
+    await fetch(
+      `${appHost}/api/auth/ensure-product-page-points?shop=${encodeURIComponent(shop)}`
+    ).catch((error) => {
+      console.error("ensure product page points after oauth failed:", error);
+    });
 
     const backParams = new URLSearchParams({ shop });
     if (host) {
