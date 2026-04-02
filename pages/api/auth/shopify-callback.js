@@ -7,6 +7,21 @@ function normalizeShopDomain(rawShop) {
   return validShopPattern.test(shop) ? shop : "";
 }
 
+function resolveAppHost(req) {
+  const forwardedHost =
+    req.headers["x-shopify-forwarded-host"] ||
+    req.headers["x-forwarded-host"] ||
+    req.headers.host ||
+    "";
+  const proto = req.headers["x-forwarded-proto"] || "https";
+
+  return String(
+    process.env.SHOPIFY_APP_URL ||
+      process.env.HOST ||
+      (forwardedHost ? `${proto}://${forwardedHost}` : "")
+  ).replace(/\/+$/, "");
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ success: false, message: "Method not allowed" });
@@ -18,11 +33,7 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.SHOPIFY_API_KEY;
   const apiSecret = process.env.SHOPIFY_API_SECRET_KEY;
-  const appHost = (
-    process.env.SHOPIFY_APP_URL ||
-    process.env.HOST ||
-    ""
-  ).replace(/\/+$/, "");
+  const appHost = resolveAppHost(req);
 
   if (!shop || !code) {
     return res.status(400).json({ success: false, message: "Missing shop or code" });

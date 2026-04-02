@@ -7,6 +7,21 @@ function normalizeShopDomain(rawShop) {
   return validShopPattern.test(shop) ? shop : "";
 }
 
+function resolveAppHost(req) {
+  const forwardedHost =
+    req.headers["x-shopify-forwarded-host"] ||
+    req.headers["x-forwarded-host"] ||
+    req.headers.host ||
+    "";
+  const proto = req.headers["x-forwarded-proto"] || "https";
+
+  return String(
+    process.env.SHOPIFY_APP_URL ||
+      process.env.HOST ||
+      (forwardedHost ? `${proto}://${forwardedHost}` : "")
+  ).replace(/\/+$/, "");
+}
+
 /**
  * Ensures the storefront loader script tag is installed.
  * @returns {Promise<{ created: boolean, skipped?: boolean, reason?: string }>}
@@ -188,16 +203,25 @@ export default async function handler(req, res) {
   }
 
   const shop = normalizeShopDomain(req.query.shop);
-  const appHost = (
-    process.env.SHOPIFY_APP_URL ||
-    process.env.HOST ||
-    ""
-  ).replace(/\/+$/, "");
+  const appHost = resolveAppHost(req);
   if (!shop) {
     return res.status(400).json({ success: false, message: "Missing or invalid shop" });
   }
   if (!appHost) {
-    return res.status(500).json({ success: false, message: "Missing HOST env var" });
+    return res.status(500).json({
+      success: false,
+      message: "Unable to resolve app host",
+      debug: {
+        envShopifyAppUrl: process.env.SHOPIFY_APP_URL || "",
+        envHost: process.env.HOST || "",
+        forwardedHost:
+          req.headers["x-shopify-forwarded-host"] ||
+          req.headers["x-forwarded-host"] ||
+          req.headers.host ||
+          "",
+        forwardedProto: req.headers["x-forwarded-proto"] || "",
+      },
+    });
   }
 
   try {

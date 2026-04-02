@@ -1,7 +1,16 @@
 const API_VERSION = "2024-01";
 
-function normalizeAppBase() {
-  const raw = process.env.SHOPIFY_APP_URL || process.env.HOST || "";
+function normalizeAppBase(req) {
+  const forwardedHost =
+    req.headers["x-shopify-forwarded-host"] ||
+    req.headers["x-forwarded-host"] ||
+    req.headers.host ||
+    "";
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const raw =
+    process.env.SHOPIFY_APP_URL ||
+    process.env.HOST ||
+    (forwardedHost ? `${proto}://${forwardedHost}` : "");
   return String(raw).replace(/\/+$/, "");
 }
 
@@ -12,7 +21,7 @@ export default async function handler(req, res) {
 
   try {
     const { shop, accessToken } = JSON.parse(req.body);
-    const appBase = normalizeAppBase();
+    const appBase = normalizeAppBase(req);
     const correctSrc = `${appBase}/loader.js`;
 
     if (!appBase) {
