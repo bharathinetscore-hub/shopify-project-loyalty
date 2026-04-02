@@ -195,16 +195,6 @@ export default async function handler(req, res) {
     const customerId = parseCustomerId(getRequestValue(req, "customerId"));
     const customerEmail = cleanText(getRequestValue(req, "customerEmail"));
     const productPrice = toNumber(getRequestValue(req, "productPrice"), 0);
-    const isLoggedIn = Boolean(customerId || customerEmail);
-
-    if (features.loginToSeePoints && !isLoggedIn) {
-      return res.status(200).json({
-        eligible: false,
-        points: 0,
-        reason: "login_required",
-      });
-    }
-
     if (!productId || productPrice <= 0) {
       return res.status(200).json({
         eligible: false,
@@ -246,16 +236,10 @@ export default async function handler(req, res) {
     }
 
     const customer = await getCustomerContext(customerId, customerEmail);
-    if (!customer.found || !customer.eligible) {
-      return res.status(200).json({
-        eligible: false,
-        points: 0,
-        reason: "customer_ineligible",
-      });
-    }
 
     const globalMultiplier = await getGlobalMultiplier();
-    const tierMultiplier = customer.tierMultiplier;
+    const tierMultiplier =
+      customer.found && customer.eligible ? customer.tierMultiplier : null;
     const enableCollection = Boolean(item.enable_collection_type);
     const collectionType = cleanText(item.collection_type).toLowerCase();
 
@@ -283,10 +267,13 @@ export default async function handler(req, res) {
       points,
       message: points > 0 ? `Earn ${points} points` : "",
       meta: {
+        previewForGuest: !customer.found,
+        previewForIneligibleCustomer: customer.found && !customer.eligible,
         availablePoints: customer.availablePoints,
         tierName: customer.tierName,
         tierMultiplier,
         globalMultiplier,
+        loginToSeePointsEnabled: features.loginToSeePoints,
         collectionType: enableCollection ? collectionType || "default" : "disabled",
       },
     });
