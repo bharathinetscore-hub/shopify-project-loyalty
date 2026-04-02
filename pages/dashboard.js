@@ -610,6 +610,16 @@ export default function Dashboard() {
     setNotice({ message: "", tone: "success" });
   };
 
+  useEffect(() => {
+    if (!notice.message) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      clearNotice();
+    }, 15000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [notice.message]);
+
   const handleLogout = () => {
     sessionStorage.removeItem("lmpUser");
     localStorage.removeItem("lmpUser");

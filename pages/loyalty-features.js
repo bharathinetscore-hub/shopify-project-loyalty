@@ -328,6 +328,16 @@ export default function LoyaltyFeaturesPage() {
     if (user) loadFeaturesConfig();
   }, [user]);
 
+  useEffect(() => {
+    if (!notice.message) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setNotice({ tone: "success", message: "" });
+    }, 15000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [notice]);
+
   const planEnd = useMemo(() => {
     if (!user?.planEnd) return null;
     const d = new Date(user.planEnd);

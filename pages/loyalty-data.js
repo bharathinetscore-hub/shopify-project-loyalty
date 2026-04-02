@@ -516,6 +516,26 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!productOptionsInfo) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setProductOptionsInfo("");
+    }, 15000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [productOptionsInfo]);
+
+  useEffect(() => {
+    if (!customersInfo) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setCustomersInfo("");
+    }, 15000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [customersInfo]);
+
   /* ---------------- License Check ---------------- */
 
   const planEnd = useMemo(() => {
