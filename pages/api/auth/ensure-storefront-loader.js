@@ -46,11 +46,50 @@ async function ensureStorefrontScriptTag(shop, accessToken, appHost) {
     event: String(tag?.event || ""),
   }));
 
-  const alreadyInstalled = existingTags.some(
+  const loaderTags = existingTags.filter((tag) =>
+    String(tag?.src || "").toLowerCase().includes("/loader.js")
+  );
+  const staleLoaderTags = loaderTags.filter(
+    (tag) => String(tag?.src || "").replace(/\/+$/, "") !== scriptSrc
+  );
+
+  for (const tag of staleLoaderTags) {
+    if (!tag?.id) continue;
+
+    const deleteRes = await fetch(
+      `https://${shop}/admin/api/${apiVersion}/script_tags/${tag.id}.json`,
+      {
+        method: "DELETE",
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!deleteRes.ok && deleteRes.status !== 404) {
+      const deleteBody = await deleteRes.text().catch(() => "");
+      throw new Error(
+        `Unable to delete stale ScriptTag ${tag.id} (${deleteRes.status}): ${deleteBody || "no response body"}`
+      );
+    }
+  }
+
+  const remainingTags = existingTags.filter(
+    (tag) => !staleLoaderTags.some((staleTag) => staleTag.id === tag.id)
+  );
+
+  const alreadyInstalled = remainingTags.some(
     (tag) => String(tag?.src || "").replace(/\/+$/, "") === scriptSrc
   );
   if (alreadyInstalled) {
-    return { created: false, alreadyInstalled: true, existingTags, scriptSrc };
+    return {
+      created: false,
+      alreadyInstalled: true,
+      existingTags: remainingTags,
+      removedStaleTags: staleLoaderTags,
+      scriptSrc,
+    };
   }
 
   const createRes = await fetch(`https://${shop}/admin/api/${apiVersion}/script_tags.json`, {
@@ -80,7 +119,8 @@ async function ensureStorefrontScriptTag(shop, accessToken, appHost) {
   return {
     created: true,
     alreadyInstalled: false,
-    existingTags,
+    existingTags: remainingTags,
+    removedStaleTags: staleLoaderTags,
     scriptSrc,
     createdTagId: createData?.script_tag?.id || null,
   };
@@ -196,6 +236,7 @@ export default async function handler(req, res) {
       scriptTagSrc: scriptTagResult.scriptSrc || `${appHost}/loader.js`,
       scriptTagCreatedTagId: scriptTagResult.createdTagId || null,
       existingScriptTags: scriptTagResult.existingTags || [],
+      removedStaleScriptTags: scriptTagResult.removedStaleTags || [],
       webhookCreated,
       webhookSkipped: webhookResult.skipped === true,
       webhookSkipReason: webhookResult.reason || null,
