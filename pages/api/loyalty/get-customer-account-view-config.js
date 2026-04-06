@@ -123,6 +123,8 @@ async function generateUniqueReferralCode(customerId, customerName) {
 }
 
 async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, customerEmail, customerName }) {
+  const canonicalCustomerId = cleanText(customerIdParsed) || cleanText(customerIdRaw);
+
   const lookupRes = await pool.query(
     `
       SELECT customer_id, customer_email, customer_referral_code
@@ -133,15 +135,23 @@ async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, cus
         OR ($2::text <> '' AND regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $2)
         OR ($3::text <> '' AND LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($3)))
       )
-      ORDER BY id DESC
+      ORDER BY
+        CASE
+          WHEN ($2::text <> '' AND TRIM(COALESCE(customer_id, '')) = TRIM($2)) THEN 1
+          WHEN ($2::text <> '' AND regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $2) THEN 2
+          WHEN ($1::text <> '' AND TRIM(COALESCE(customer_id, '')) = TRIM($1)) THEN 3
+          WHEN ($3::text <> '' AND LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($3))) THEN 4
+          ELSE 5
+        END,
+        updated_at DESC NULLS LAST,
+        id DESC
       LIMIT 1
     `,
     [customerIdRaw || "", customerIdParsed || "", customerEmail || ""]
   );
 
   const existing = lookupRes.rows[0] || null;
-  const resolvedCustomerId =
-    cleanText(existing?.customer_id) || cleanText(customerIdRaw) || cleanText(customerIdParsed);
+  const resolvedCustomerId = canonicalCustomerId || cleanText(existing?.customer_id);
 
   if (!resolvedCustomerId) {
     return;
@@ -200,6 +210,15 @@ async function loadCustomerEligibility(customerIdRaw, customerIdParsed, customer
         OR TRIM(COALESCE(customer_id, '')) = TRIM($2)
         OR regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $2
       )
+      ORDER BY
+        CASE
+          WHEN ($2::text <> '' AND TRIM(COALESCE(customer_id, '')) = TRIM($2)) THEN 1
+          WHEN ($2::text <> '' AND regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $2) THEN 2
+          WHEN ($1::text <> '' AND TRIM(COALESCE(customer_id, '')) = TRIM($1)) THEN 3
+          ELSE 4
+        END,
+        updated_at DESC NULLS LAST,
+        id DESC
       LIMIT 1
       `,
       [customerIdRaw || "", customerIdParsed || ""]
@@ -231,6 +250,13 @@ async function loadCustomerEligibility(customerIdRaw, customerIdParsed, customer
         customer_used_referral_code
       FROM netst_customers_table
       WHERE LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($1))
+      ORDER BY
+        CASE
+          WHEN regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') <> '' THEN 1
+          ELSE 2
+        END,
+        updated_at DESC NULLS LAST,
+        id DESC
       LIMIT 1
       `,
       [customerEmail]

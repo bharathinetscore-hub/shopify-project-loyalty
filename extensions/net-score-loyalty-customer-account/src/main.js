@@ -1002,6 +1002,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           <s-date-field
             label="Birthday"
             value={birthday}
+            disabled={Boolean(cleanText(profile?.birthday))}
             onInput={(event) => {
               setBirthday(event.currentTarget.value);
               setProfileError("");
@@ -1012,6 +1013,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           <s-date-field
             label="Anniversary Date"
             value={anniversary}
+            disabled={Boolean(cleanText(profile?.anniversary))}
             onInput={(event) => {
               setAnniversary(event.currentTarget.value);
               setProfileError("");
@@ -1034,6 +1036,22 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             <s-box border="base" borderRadius="small" padding="tight">
               <s-text tone="success">
                 Referral code applied: {cleanText(profile?.usedReferralCode)}
+              </s-text>
+            </s-box>
+          ) : null}
+
+          {cleanText(profile?.birthday) ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="success">
+                Birthday saved: {normalizeStoredDate(profile?.birthday)}
+              </s-text>
+            </s-box>
+          ) : null}
+
+          {cleanText(profile?.anniversary) ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="success">
+                Anniversary saved: {normalizeStoredDate(profile?.anniversary)}
               </s-text>
             </s-box>
           ) : null}

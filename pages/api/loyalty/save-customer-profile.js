@@ -404,6 +404,7 @@ export default async function handler(req, res) {
     const customerRes = await client.query(
       `
         SELECT
+          id,
           customer_name,
           customer_email,
           customer_referral_code,
@@ -413,10 +414,23 @@ export default async function handler(req, res) {
           total_redeemed_points,
           available_points
         FROM netst_customers_table
-        WHERE customer_id = $1
+        WHERE (
+          customer_id = $1
+          OR regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $1
+          OR ($2::text <> '' AND LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($2)))
+        )
+        ORDER BY
+          CASE
+            WHEN customer_id = $1 THEN 1
+            WHEN regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $1 THEN 2
+            WHEN ($2::text <> '' AND LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($2))) THEN 3
+            ELSE 4
+          END,
+          updated_at DESC NULLS LAST,
+          id DESC
         LIMIT 1
       `,
-      [customerId]
+      [customerId, customerEmail]
     );
 
     const existingCustomer = customerRes.rows[0] || {};
@@ -721,6 +735,28 @@ export default async function handler(req, res) {
         availablePoints,
       ]
     );
+
+    if (finalCustomerEmail) {
+      await client.query(
+        `
+          DELETE FROM netst_customers_table
+          WHERE customer_id <> $1
+            AND LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($2))
+            AND (
+              TRIM(COALESCE(customer_birthday::text, '')) = ''
+              OR customer_birthday IS NULL
+            )
+            AND (
+              TRIM(COALESCE(customer_anniversary::text, '')) = ''
+              OR customer_anniversary IS NULL
+            )
+            AND COALESCE(total_earned_points, 0) = 0
+            AND COALESCE(total_redeemed_points, 0) = 0
+            AND COALESCE(available_points, 0) = 0
+        `,
+        [customerId, finalCustomerEmail]
+      );
+    }
 
     await client.query("COMMIT");
 
