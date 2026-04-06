@@ -410,26 +410,30 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     onPerPageChange,
   }) {
     return (
-      <s-stack direction="inline" justifyContent="space-between" alignItems="center" gap="base">
-        <s-stack direction="inline" alignItems="center" gap="tight">
-          <s-text>Items per page</s-text>
-          <s-box inlineSize="90px">
-            <s-text-field
-              label="Items per page"
-              labelAccessibilityVisibility="exclusive"
-              value={String(perPage)}
-              inputMode="numeric"
-              onInput={(event) => {
-                onPerPageChange(normalizePerPage(event.currentTarget.value));
-              }}
-            />
-          </s-box>
-          <s-text>
-            {totalItems ? `${page} / ${totalPages}` : "0 / 1"}
-          </s-text>
-        </s-stack>
+      <s-stack direction="inline" justifyContent="space-between" alignItems="center" gap="loose">
+        <s-box inlineSize="72px">
+          <s-select
+            label=""
+            labelAccessibilityVisibility="exclusive"
+            value={String(perPage)}
+            onChange={(event) => {
+              onPerPageChange(normalizePerPage(event.currentTarget.value));
+            }}
+          >
+            <s-option value="1">1</s-option>
+            <s-option value="2">2</s-option>
+            <s-option value="3">3</s-option>
+            <s-option value="4">4</s-option>
+            <s-option value="5">5</s-option>
+            <s-option value="6">6</s-option>
+            <s-option value="7">7</s-option>
+            <s-option value="8">8</s-option>
+            <s-option value="9">9</s-option>
+            <s-option value="10">10</s-option>
+          </s-select>
+        </s-box>
 
-        <s-stack direction="inline" gap="tight">
+        <s-stack direction="inline" gap="base">
           <s-button disabled={page <= 1} onClick={onPrev}>
             Previous
           </s-button>
