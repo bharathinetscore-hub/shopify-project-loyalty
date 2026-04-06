@@ -60,6 +60,27 @@ function formatCurrency(value) {
   return `$${toNumber(value, 0).toFixed(2)}`;
 }
 
+function normalizePerPage(value) {
+  const parsed = Math.floor(toNumber(value, 10));
+  return Math.max(1, Math.min(10, parsed || 10));
+}
+
+function paginateRows(rows, page, perPage) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safePerPage = normalizePerPage(perPage);
+  const totalPages = Math.max(1, Math.ceil(safeRows.length / safePerPage));
+  const safePage = Math.max(1, Math.min(totalPages, Math.floor(toNumber(page, 1)) || 1));
+  const startIndex = (safePage - 1) * safePerPage;
+
+  return {
+    rows: safeRows.slice(startIndex, startIndex + safePerPage),
+    page: safePage,
+    perPage: safePerPage,
+    totalPages,
+    totalItems: safeRows.length,
+  };
+}
+
 function decodeJwtPayload(token) {
   try {
     const parts = String(token || "").split(".");
@@ -167,6 +188,10 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [pointsPage, setPointsPage] = useState(1);
+  const [pointsPerPage, setPointsPerPage] = useState(10);
+  const [redeemPage, setRedeemPage] = useState(1);
+  const [redeemPerPage, setRedeemPerPage] = useState(10);
   const [data, setData] = useState({
     labels: {},
     profile: {
@@ -298,6 +323,14 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     rows: [],
   };
   const redeemRows = data?.redeemHistory?.rows || [];
+  const pagedPointsRows = useMemo(
+    () => paginateRows(pointsSummary.rows || [], pointsPage, pointsPerPage),
+    [pointsSummary.rows, pointsPage, pointsPerPage]
+  );
+  const pagedRedeemRows = useMemo(
+    () => paginateRows(redeemRows, redeemPage, redeemPerPage),
+    [redeemRows, redeemPage, redeemPerPage]
+  );
   const labels = data?.labels || {};
   const profile = data?.profile || {
     birthday: null,
@@ -346,6 +379,67 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     }
     return "";
   }, [availablePoints, enteredGiftCardPoints, giftCardPoints]);
+
+  useEffect(() => {
+    setPointsPage(1);
+  }, [pointsPerPage]);
+
+  useEffect(() => {
+    setRedeemPage(1);
+  }, [redeemPerPage]);
+
+  useEffect(() => {
+    if (pointsPage > pagedPointsRows.totalPages) {
+      setPointsPage(pagedPointsRows.totalPages);
+    }
+  }, [pointsPage, pagedPointsRows.totalPages]);
+
+  useEffect(() => {
+    if (redeemPage > pagedRedeemRows.totalPages) {
+      setRedeemPage(pagedRedeemRows.totalPages);
+    }
+  }, [redeemPage, pagedRedeemRows.totalPages]);
+
+  function renderPaginationControls({
+    page,
+    totalPages,
+    perPage,
+    totalItems,
+    onPrev,
+    onNext,
+    onPerPageChange,
+  }) {
+    return (
+      <s-stack direction="inline" justifyContent="space-between" alignItems="center" gap="base">
+        <s-stack direction="inline" alignItems="center" gap="tight">
+          <s-text>Items per page</s-text>
+          <s-box inlineSize="90px">
+            <s-text-field
+              label="Items per page"
+              labelAccessibilityVisibility="exclusive"
+              value={String(perPage)}
+              inputMode="numeric"
+              onInput={(event) => {
+                onPerPageChange(normalizePerPage(event.currentTarget.value));
+              }}
+            />
+          </s-box>
+          <s-text>
+            {totalItems ? `${page} / ${totalPages}` : "0 / 1"}
+          </s-text>
+        </s-stack>
+
+        <s-stack direction="inline" gap="tight">
+          <s-button disabled={page <= 1} onClick={onPrev}>
+            Previous
+          </s-button>
+          <s-button disabled={page >= totalPages || totalItems === 0} onClick={onNext}>
+            Next
+          </s-button>
+        </s-stack>
+      </s-stack>
+    );
+  }
 
   async function handleShareReferralCode() {
     setReferFriendError("");
@@ -579,7 +673,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
               ))}
             </s-grid>
 
-            {(pointsSummary.rows || []).map((row, idx) => (
+            {pagedPointsRows.rows.map((row, idx) => (
               <s-grid key={`${row.referenceId || idx}`} gridTemplateColumns="1fr 2fr 1fr 1fr" gap="none">
                 <s-box border="base" padding="base">
                   <s-text>{normalizeStoredDate(row.date) || "-"}</s-text>
@@ -597,6 +691,17 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             ))}
           </s-stack>
         </s-box>
+
+        {renderPaginationControls({
+          page: pagedPointsRows.page,
+          totalPages: pagedPointsRows.totalPages,
+          perPage: pagedPointsRows.perPage,
+          totalItems: pagedPointsRows.totalItems,
+          onPrev: () => setPointsPage((current) => Math.max(1, current - 1)),
+          onNext: () =>
+            setPointsPage((current) => Math.min(pagedPointsRows.totalPages, current + 1)),
+          onPerPageChange: setPointsPerPage,
+        })}
       </s-stack>
     );
   }
@@ -614,7 +719,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
               ))}
             </s-grid>
 
-            {redeemRows.map((row, idx) => (
+            {pagedRedeemRows.rows.map((row, idx) => (
               <s-grid key={`${row.referenceId || idx}`} gridTemplateColumns="1fr 2fr 1fr 1fr 1fr" gap="none">
                 <s-box border="base" padding="base">
                   <s-text>{normalizeStoredDate(row.date) || "-"}</s-text>
@@ -635,6 +740,17 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             ))}
           </s-stack>
         </s-box>
+
+        {renderPaginationControls({
+          page: pagedRedeemRows.page,
+          totalPages: pagedRedeemRows.totalPages,
+          perPage: pagedRedeemRows.perPage,
+          totalItems: pagedRedeemRows.totalItems,
+          onPrev: () => setRedeemPage((current) => Math.max(1, current - 1)),
+          onNext: () =>
+            setRedeemPage((current) => Math.min(pagedRedeemRows.totalPages, current + 1)),
+          onPerPageChange: setRedeemPerPage,
+        })}
       </s-stack>
     );
   }
