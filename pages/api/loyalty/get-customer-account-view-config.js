@@ -63,6 +63,123 @@ async function ensureCustomersTable() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  const ensureColumn = async (columnName, definitionSql) => {
+    const check = await pool.query(
+      `
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'netst_customers_table'
+        AND column_name = $1
+      LIMIT 1
+      `,
+      [columnName]
+    );
+
+    if (!check.rows.length) {
+      await pool.query(`ALTER TABLE netst_customers_table ADD COLUMN ${definitionSql};`);
+    }
+  };
+
+  await ensureColumn("customer_birthday", "customer_birthday DATE NULL");
+  await ensureColumn("customer_anniversary", "customer_anniversary DATE NULL");
+  await ensureColumn("customer_referral_code", "customer_referral_code TEXT NULL");
+  await ensureColumn("customer_used_referral_code", "customer_used_referral_code TEXT NULL");
+}
+
+function buildReferralCodeSeed(customerId, customerName) {
+  const nameSeed = cleanText(customerName)
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase()
+    .slice(0, 4);
+  const idSeed = parseCustomerId(customerId).slice(-4) || `${Date.now()}`.slice(-4);
+  const randomSeed = Math.random().toString(36).slice(2, 6).toUpperCase();
+
+  return `NSL-${nameSeed || "USER"}-${idSeed}${randomSeed}`;
+}
+
+async function generateUniqueReferralCode(customerId, customerName) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const candidate = buildReferralCodeSeed(customerId, customerName);
+    const existing = await pool.query(
+      `
+      SELECT 1
+      FROM netst_customers_table
+      WHERE customer_referral_code = $1
+      LIMIT 1
+      `,
+      [candidate]
+    );
+
+    if (!existing.rows.length) {
+      return candidate;
+    }
+  }
+
+  return `NSL-${parseCustomerId(customerId).slice(-6) || Date.now().toString().slice(-6)}-${Date.now()
+    .toString()
+    .slice(-4)}`;
+}
+
+async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, customerEmail, customerName }) {
+  const lookupRes = await pool.query(
+    `
+      SELECT customer_id, customer_email, customer_referral_code
+      FROM netst_customers_table
+      WHERE (
+        ($1::text <> '' AND TRIM(COALESCE(customer_id, '')) = TRIM($1))
+        OR ($2::text <> '' AND TRIM(COALESCE(customer_id, '')) = TRIM($2))
+        OR ($2::text <> '' AND regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $2)
+        OR ($3::text <> '' AND LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($3)))
+      )
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [customerIdRaw || "", customerIdParsed || "", customerEmail || ""]
+  );
+
+  const existing = lookupRes.rows[0] || null;
+  const resolvedCustomerId =
+    cleanText(existing?.customer_id) || cleanText(customerIdRaw) || cleanText(customerIdParsed);
+
+  if (!resolvedCustomerId) {
+    return;
+  }
+
+  const existingCode = cleanText(existing?.customer_referral_code);
+  if (existingCode) {
+    return;
+  }
+
+  const referralCode = await generateUniqueReferralCode(resolvedCustomerId, customerName);
+  const resolvedCustomerEmail = cleanText(existing?.customer_email) || cleanText(customerEmail) || null;
+  const resolvedCustomerName = cleanText(customerName) || resolvedCustomerEmail || `Customer ${resolvedCustomerId}`;
+
+  await pool.query(
+    `
+      INSERT INTO netst_customers_table (
+        customer_id,
+        customer_name,
+        customer_email,
+        customer_referral_code,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      ON CONFLICT (customer_id)
+      DO UPDATE SET
+        customer_name = COALESCE(NULLIF(EXCLUDED.customer_name, ''), netst_customers_table.customer_name),
+        customer_email = COALESCE(NULLIF(EXCLUDED.customer_email, ''), netst_customers_table.customer_email),
+        customer_referral_code = COALESCE(NULLIF(netst_customers_table.customer_referral_code, ''), EXCLUDED.customer_referral_code),
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    [
+      resolvedCustomerId,
+      resolvedCustomerName,
+      resolvedCustomerEmail,
+      referralCode,
+    ]
+  );
 }
 
 async function loadCustomerEligibility(customerIdRaw, customerIdParsed, customerEmail) {
@@ -413,6 +530,7 @@ export default async function handler(req, res) {
     const customerIdRaw = cleanText(req.body?.customerIdRaw || req.body?.customerId);
     const customerIdParsed = parseCustomerId(customerIdRaw);
     const customerEmail = cleanText(req.body?.customerEmail);
+    const customerName = cleanText(req.body?.customerName);
 
     const featuresRes = await pool.query(
       `
@@ -433,6 +551,12 @@ export default async function handler(req, res) {
     const features = featuresRes.rows[0] || null;
     // Keep customer-account and checkout extensions visible for all users.
     const globalLoyaltyEnabled = true;
+    await ensureCustomerReferralCode({
+      customerIdRaw,
+      customerIdParsed,
+      customerEmail,
+      customerName,
+    });
     const customerLookup = await loadCustomerEligibility(
       customerIdRaw,
       customerIdParsed,
