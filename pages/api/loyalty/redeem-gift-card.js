@@ -479,7 +479,7 @@ export default async function handler(req, res) {
       success: true,
       message: emailResult.sent
         ? `Gift card generated and emailed to ${receiverEmail}.`
-        : `Gift card generated, but email could not be sent to ${receiverEmail}.`,
+        : `Gift card generated, but email could not be sent to ${receiverEmail}. ${cleanText(emailResult.error) || ""}`.trim(),
       giftCode: shopifyDiscount.code,
       giftAmount,
       expiryDate: shopifyDiscount.endsAt,
