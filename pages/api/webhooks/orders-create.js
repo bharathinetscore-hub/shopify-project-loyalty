@@ -99,6 +99,110 @@ async function ensureEventDetailsTable() {
   `);
 }
 
+async function ensureCustomersTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS netst_customers_table (
+      id BIGSERIAL PRIMARY KEY,
+      customer_id TEXT NOT NULL UNIQUE,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  const ensureColumn = async (columnName, definitionSql) => {
+    const check = await pool.query(
+      `
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'netst_customers_table'
+        AND column_name = $1
+      LIMIT 1
+      `,
+      [columnName]
+    );
+    if (!check.rows.length) {
+      await pool.query(`ALTER TABLE netst_customers_table ADD COLUMN ${definitionSql};`);
+    }
+  };
+
+  await ensureColumn("customer_eligible_for_loyalty", "customer_eligible_for_loyalty BOOLEAN NOT NULL DEFAULT false");
+  await ensureColumn("total_earned_points", "total_earned_points NUMERIC(12,2) NOT NULL DEFAULT 0");
+  await ensureColumn("total_redeemed_points", "total_redeemed_points NUMERIC(12,2) NOT NULL DEFAULT 0");
+  await ensureColumn("available_points", "available_points NUMERIC(12,2) NOT NULL DEFAULT 0");
+}
+
+async function loadCustomerPoints(customerId) {
+  if (!customerId) {
+    return {
+      totalEarned: 0,
+      totalRedeemed: 0,
+      available: 0,
+    };
+  }
+
+  const result = await pool.query(
+    `
+      SELECT total_earned_points, total_redeemed_points, available_points
+      FROM netst_customers_table
+      WHERE customer_id = $1
+      LIMIT 1
+    `,
+    [String(customerId)]
+  );
+
+  const row = result.rows[0] || {};
+  return {
+    totalEarned: toNumber(row.total_earned_points, 0),
+    totalRedeemed: toNumber(row.total_redeemed_points, 0),
+    available: toNumber(row.available_points, 0),
+  };
+}
+
+async function upsertCustomerPoints({
+  customerId,
+  customerName,
+  customerEmail,
+  totalEarned,
+  totalRedeemed,
+  available,
+}) {
+  if (!customerId) return;
+
+  await pool.query(
+    `
+      INSERT INTO netst_customers_table (
+        customer_id,
+        customer_name,
+        customer_email,
+        total_earned_points,
+        total_redeemed_points,
+        available_points,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+      ON CONFLICT (customer_id)
+      DO UPDATE SET
+        customer_name = COALESCE(NULLIF(EXCLUDED.customer_name, ''), netst_customers_table.customer_name),
+        customer_email = COALESCE(NULLIF(EXCLUDED.customer_email, ''), netst_customers_table.customer_email),
+        total_earned_points = EXCLUDED.total_earned_points,
+        total_redeemed_points = EXCLUDED.total_redeemed_points,
+        available_points = EXCLUDED.available_points,
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    [
+      String(customerId),
+      cleanText(customerName) || "Unnamed Customer",
+      cleanText(customerEmail) || null,
+      totalEarned,
+      totalRedeemed,
+      available,
+    ]
+  );
+}
+
 async function getGlobalMultiplier() {
   const configRes = await pool.query(
     "SELECT each_point_value FROM netst_loyalty_config_table ORDER BY id DESC LIMIT 1"
@@ -307,8 +411,17 @@ export default async function handler(req, res) {
     if (!orderId) return res.status(200).send("No order id");
 
     await ensureEventDetailsTable();
+    await ensureCustomersTable();
 
     const customerId = parseCustomerId(payload?.customer?.id);
+    const customerName = cleanText(
+      [
+        cleanText(payload?.customer?.first_name),
+        cleanText(payload?.customer?.last_name),
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
     const receiverEmail = String(payload?.email || payload?.customer?.email || "").trim() || null;
     const noteAttributeMap = getNoteAttributeMap(payload?.note_attributes);
     const createdAt = payload?.created_at ? new Date(payload.created_at) : new Date();
@@ -325,6 +438,10 @@ export default async function handler(req, res) {
     });
 
     const eventOne = await getEventOneName();
+    const startingCustomerPoints = await loadCustomerPoints(customerId);
+    let runningTotalEarned = startingCustomerPoints.totalEarned;
+    let runningTotalRedeemed = startingCustomerPoints.totalRedeemed;
+    let runningAvailable = startingCustomerPoints.available;
 
     const existing = await pool.query(
       `
@@ -354,8 +471,7 @@ export default async function handler(req, res) {
       );
 
       if (!existingRedeem.rows.length) {
-        const pointsSummary = await loadAvailablePoints(customerId, receiverEmail);
-        const pointsLeft = Math.max(0, pointsSummary.available - loyaltyRedeemPoints);
+        const pointsLeft = Math.max(0, runningAvailable - loyaltyRedeemPoints);
 
         await pool.query(
           `
@@ -406,8 +522,13 @@ export default async function handler(req, res) {
             null,
           ]
         );
+
+        runningTotalRedeemed += loyaltyRedeemPoints;
+        runningAvailable = pointsLeft;
       }
     }
+
+    const pointsLeftAfterEarn = Math.max(0, runningAvailable + pointsEarned);
 
     await pool.query(
       `
@@ -442,7 +563,7 @@ export default async function handler(req, res) {
         eventOne.name,
         pointsEarned,
         0,
-        pointsEarned,
+        pointsLeftAfterEarn,
         orderId,
         amount,
         null,
@@ -458,6 +579,18 @@ export default async function handler(req, res) {
         eventOne.id,
       ]
     );
+
+    runningTotalEarned += pointsEarned;
+    runningAvailable = pointsLeftAfterEarn;
+
+    await upsertCustomerPoints({
+      customerId,
+      customerName,
+      customerEmail: receiverEmail,
+      totalEarned: runningTotalEarned,
+      totalRedeemed: runningTotalRedeemed,
+      available: runningAvailable,
+    });
 
     return res.status(200).send("OK");
   } catch (error) {
