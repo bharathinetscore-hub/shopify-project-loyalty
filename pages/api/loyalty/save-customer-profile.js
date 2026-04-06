@@ -41,6 +41,38 @@ function buildPointsExpirationDate(days) {
   return formatDateOnly(nextDate);
 }
 
+function buildReferralCodeSeed(customerId, customerName) {
+  const nameSeed = cleanText(customerName)
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase()
+    .slice(0, 4);
+  const idSeed = parseCustomerId(customerId).slice(-4) || `${Date.now()}`.slice(-4);
+  const randomSeed = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `NSL-${nameSeed || "USER"}-${idSeed}${randomSeed}`;
+}
+
+async function generateUniqueReferralCode(db, customerId, customerName) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const candidate = buildReferralCodeSeed(customerId, customerName);
+    const existing = await db.query(
+      `
+      SELECT 1
+      FROM netst_customers_table
+      WHERE customer_referral_code = $1
+      LIMIT 1
+      `,
+      [candidate]
+    );
+    if (!existing.rows.length) {
+      return candidate;
+    }
+  }
+
+  return `NSL-${parseCustomerId(customerId).slice(-6) || Date.now().toString().slice(-6)}-${Date.now()
+    .toString()
+    .slice(-4)}`;
+}
+
 async function ensureCustomersTable(db) {
   await db.query(`
     CREATE TABLE IF NOT EXISTS netst_customers_table (
@@ -137,6 +169,7 @@ async function ensureConfigTable(db) {
   await db.query(`
     CREATE TABLE IF NOT EXISTS netst_loyalty_config_table (
       id SERIAL PRIMARY KEY,
+      referral_points NUMERIC(10,2) DEFAULT 0.00,
       birthday_points NUMERIC(10,2) DEFAULT 0.00,
       anniversary_points NUMERIC(10,2) DEFAULT 0.00,
       points_expiration_days VARCHAR(255) DEFAULT NULL,
@@ -145,6 +178,10 @@ async function ensureConfigTable(db) {
     )
   `);
 
+  await db.query(`
+    ALTER TABLE netst_loyalty_config_table
+    ADD COLUMN IF NOT EXISTS referral_points NUMERIC(10,2) DEFAULT 0.00
+  `);
   await db.query(`
     ALTER TABLE netst_loyalty_config_table
     ADD COLUMN IF NOT EXISTS birthday_points NUMERIC(10,2) DEFAULT 0.00
@@ -162,7 +199,7 @@ async function ensureConfigTable(db) {
 async function loadProfileAwardConfig(db) {
   const result = await db.query(
     `
-      SELECT birthday_points, anniversary_points, points_expiration_days
+      SELECT referral_points, birthday_points, anniversary_points, points_expiration_days
       FROM netst_loyalty_config_table
       ORDER BY id DESC
       LIMIT 1
@@ -171,6 +208,7 @@ async function loadProfileAwardConfig(db) {
 
   const row = result.rows[0] || {};
   return {
+    referralPoints: toNumber(row.referral_points, 0),
     birthdayPoints: toNumber(row.birthday_points, 0),
     anniversaryPoints: toNumber(row.anniversary_points, 0),
     pointsExpirationDays: normalizeWholeNumber(row.points_expiration_days, 0),
@@ -199,6 +237,31 @@ async function loadEventDefinition(db, eventId) {
   };
 }
 
+async function ensureEventDefinition(db, eventId, fallbackName) {
+  const existing = await loadEventDefinition(db, eventId);
+  if (existing?.name) {
+    return existing;
+  }
+
+  await db.query(
+    `
+      INSERT INTO netst_events_table (event_id, event_name, is_active, created_at, updated_at)
+      VALUES ($1, $2, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (event_id)
+      DO UPDATE SET
+        event_name = COALESCE(NULLIF(netst_events_table.event_name, ''), EXCLUDED.event_name),
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    [String(eventId), fallbackName]
+  );
+
+  return {
+    id: toNumber(eventId, 0),
+    name: fallbackName,
+    isActive: true,
+  };
+}
+
 async function loadExistingAwards(db, customerId, eventIds) {
   const result = await db.query(
     `
@@ -212,6 +275,84 @@ async function loadExistingAwards(db, customerId, eventIds) {
   );
 
   return new Set(result.rows.map((row) => toNumber(row.event_id, 0)));
+}
+
+async function loadCustomerByReferralCode(db, referralCode) {
+  const normalizedCode = cleanText(referralCode);
+  if (!normalizedCode) return null;
+
+  const result = await db.query(
+    `
+      SELECT
+        customer_id,
+        customer_name,
+        customer_email,
+        customer_referral_code,
+        total_earned_points,
+        total_redeemed_points,
+        available_points
+      FROM netst_customers_table
+      WHERE LOWER(TRIM(COALESCE(customer_referral_code, ''))) = LOWER(TRIM($1))
+      LIMIT 1
+    `,
+    [normalizedCode]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function awardReferralEvent(db, {
+  customerId,
+  receiverEmail,
+  eventId,
+  eventName,
+  comments,
+  referFriendId = null,
+  pointsEarned,
+  pointsLeft,
+  pointsExpirationDate,
+  pointsExpirationDaysValue,
+}) {
+  await db.query(
+    `
+      INSERT INTO netst_customer__event_details_table (
+        customer_id,
+        date_created,
+        event_name,
+        points_earned,
+        points_redeemed,
+        points_left,
+        transaction_id,
+        amount,
+        gift_code,
+        receiver_email,
+        refer_friend_id,
+        comments,
+        points_expiration_date,
+        points_expiration_days,
+        expired,
+        points_type,
+        created_at,
+        updated_at,
+        event_id
+      )
+      VALUES (
+        $1, CURRENT_DATE, $2, $3, 0, $4, NULL, 0, NULL, $5, $6, $7, $8, $9, FALSE, 'positive', NOW(), NOW(), $10
+      )
+    `,
+    [
+      toNumber(customerId, 0),
+      eventName,
+      pointsEarned,
+      pointsLeft,
+      receiverEmail,
+      referFriendId ? toNumber(referFriendId, 0) : null,
+      comments,
+      pointsExpirationDate,
+      pointsExpirationDaysValue,
+      eventId,
+    ]
+  );
 }
 
 export default async function handler(req, res) {
@@ -253,9 +394,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "customerId is required" });
     }
 
-    if (!isAdminSave && (!birthday || !anniversary)) {
+    if (!isAdminSave && !birthday && !anniversary && !requestedUsedReferralCode) {
       await client.query("ROLLBACK");
-      return res.status(400).json({ error: "Birthday and anniversary are required." });
+      return res.status(400).json({
+        error: "Provide birthday, anniversary, or a referral code.",
+      });
     }
 
     const customerRes = await client.query(
@@ -286,9 +429,10 @@ export default async function handler(req, res) {
     const finalEligibleForLoyalty = hasEligibleForLoyalty
       ? requestedEligibleForLoyalty
       : true;
+    const existingReferralCode = cleanText(existingCustomer.customer_referral_code) || null;
     const finalReferralCode = hasReferralCode
       ? requestedReferralCode || null
-      : cleanText(existingCustomer.customer_referral_code) || null;
+      : existingReferralCode;
     const finalUsedReferralCode = hasUsedReferralCode
       ? requestedUsedReferralCode || null
       : cleanText(existingCustomer.customer_used_referral_code) || null;
@@ -301,44 +445,162 @@ export default async function handler(req, res) {
     let availablePoints = hasAvailablePoints
       ? toNumber(req.body?.availablePoints, 0)
       : toNumber(existingCustomer.available_points, 0);
+    let resolvedReferralCode = finalReferralCode;
     let newPointsAwarded = 0;
     const awardedEvents = [];
     const skippedEvents = [];
 
+    if (!resolvedReferralCode) {
+      resolvedReferralCode = await generateUniqueReferralCode(client, customerId, customerName);
+    }
+
     if (!isAdminSave) {
       const config = await loadProfileAwardConfig(client);
-      const birthdayEvent = await loadEventDefinition(client, 9);
-      const anniversaryEvent = await loadEventDefinition(client, 10);
+      const birthdayEvent = await ensureEventDefinition(client, 9, "Points Earned on Birthday");
+      const anniversaryEvent = await ensureEventDefinition(client, 10, "Points Earned on Anniversary");
+      const referredSignupEvent = await ensureEventDefinition(client, 6, "Points Earned on Signup");
+      const referrerRewardEvent = await ensureEventDefinition(
+        client,
+        5,
+        "Points Earned on Referred Friend Sign up"
+      );
 
-      if (!birthdayEvent?.name || !anniversaryEvent?.name) {
+      if (!birthdayEvent?.name || !anniversaryEvent?.name || !referredSignupEvent?.name || !referrerRewardEvent?.name) {
         await client.query("ROLLBACK");
         return res.status(400).json({
-          error: "Birthday and anniversary events are missing in netst_events_table for event IDs 9 and 10.",
+          error: "Required loyalty events are missing in netst_events_table.",
         });
       }
 
       const existingAwards = await loadExistingAwards(client, customerId, [9, 10]);
       let transactionSeed = Date.now();
       const profileEvents = [
-        {
-          eventId: birthdayEvent.id,
-          eventName: birthdayEvent.name,
-          points: config.birthdayPoints,
-          profileDate: birthday,
-        },
-        {
-          eventId: anniversaryEvent.id,
-          eventName: anniversaryEvent.name,
-          points: config.anniversaryPoints,
-          profileDate: anniversary,
-        },
-      ];
+        birthday
+          ? {
+              eventId: birthdayEvent.id,
+              eventName: birthdayEvent.name,
+              points: config.birthdayPoints,
+              profileDate: birthday,
+            }
+          : null,
+        anniversary
+          ? {
+              eventId: anniversaryEvent.id,
+              eventName: anniversaryEvent.name,
+              points: config.anniversaryPoints,
+              profileDate: anniversary,
+            }
+          : null,
+      ].filter(Boolean);
 
       const pointsExpirationDate = buildPointsExpirationDate(config.pointsExpirationDays);
       const pointsExpirationDaysValue =
         config.pointsExpirationDays > 0 ? String(config.pointsExpirationDays) : null;
 
+      if (finalUsedReferralCode) {
+        const alreadyUsedCode = cleanText(existingCustomer.customer_used_referral_code);
+        if (alreadyUsedCode && alreadyUsedCode.toLowerCase() === finalUsedReferralCode.toLowerCase()) {
+          skippedEvents.push({
+            id: referredSignupEvent.id,
+            name: referredSignupEvent.name,
+            reason: "already_used_referral_code",
+          });
+        } else {
+          const referrer = await loadCustomerByReferralCode(client, finalUsedReferralCode);
+
+          if (!referrer) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ error: "Invalid referral code." });
+          }
+
+          if (cleanText(referrer.customer_id) === customerId) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ error: "You cannot use your own referral code." });
+          }
+
+          const signupAwardExists = await client.query(
+            `
+              SELECT id
+              FROM netst_customer__event_details_table
+              WHERE customer_id = $1
+                AND event_id = $2
+                AND LOWER(TRIM(COALESCE(comments, ''))) = LOWER(TRIM($3))
+              LIMIT 1
+            `,
+            [toNumber(customerId, 0), referredSignupEvent.id, `Referral code used: ${finalUsedReferralCode}`]
+          );
+
+          if (!signupAwardExists.rows.length) {
+            const referralPoints = Math.max(0, toNumber(config.referralPoints, 0));
+
+            if (referralPoints > 0) {
+              totalEarnedPoints += referralPoints;
+              availablePoints = totalEarnedPoints - totalRedeemedPoints;
+              newPointsAwarded += referralPoints;
+
+              await awardReferralEvent(client, {
+                customerId,
+                receiverEmail: finalCustomerEmail,
+                eventId: referredSignupEvent.id,
+                eventName: referredSignupEvent.name,
+                comments: `Referral code used: ${finalUsedReferralCode}`,
+                referFriendId: referrer.customer_id,
+                pointsEarned: referralPoints,
+                pointsLeft: availablePoints,
+                pointsExpirationDate,
+                pointsExpirationDaysValue,
+              });
+
+              awardedEvents.push({
+                id: referredSignupEvent.id,
+                name: referredSignupEvent.name,
+                pointsEarned: referralPoints,
+              });
+
+              const referrerEarned = toNumber(referrer.total_earned_points, 0) + referralPoints;
+              const referrerRedeemed = toNumber(referrer.total_redeemed_points, 0);
+              const referrerAvailable = referrerEarned - referrerRedeemed;
+
+              await awardReferralEvent(client, {
+                customerId: referrer.customer_id,
+                receiverEmail: cleanText(referrer.customer_email) || null,
+                eventId: referrerRewardEvent.id,
+                eventName: referrerRewardEvent.name,
+                comments: `Referral reward for customer ${customerId}`,
+                referFriendId: customerId,
+                pointsEarned: referralPoints,
+                pointsLeft: referrerAvailable,
+                pointsExpirationDate,
+                pointsExpirationDaysValue,
+              });
+
+              await client.query(
+                `
+                  UPDATE netst_customers_table
+                  SET
+                    total_earned_points = $1,
+                    available_points = $2,
+                    updated_at = CURRENT_TIMESTAMP
+                  WHERE customer_id = $3
+                `,
+                [referrerEarned, referrerAvailable, cleanText(referrer.customer_id)]
+              );
+            }
+          } else {
+            skippedEvents.push({
+              id: referredSignupEvent.id,
+              name: referredSignupEvent.name,
+              reason: "referral_already_awarded",
+            });
+          }
+        }
+      }
+
       for (const event of profileEvents) {
+        if (!event?.profileDate) {
+          continue;
+        }
+
         if (existingAwards.has(event.eventId)) {
           skippedEvents.push({
             id: event.eventId,
@@ -452,7 +714,7 @@ export default async function handler(req, res) {
         birthday,
         anniversary,
         finalEligibleForLoyalty,
-        finalReferralCode,
+        resolvedReferralCode,
         finalUsedReferralCode,
         totalEarnedPoints,
         totalRedeemedPoints,

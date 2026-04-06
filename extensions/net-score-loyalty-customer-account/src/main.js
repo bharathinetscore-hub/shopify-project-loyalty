@@ -168,6 +168,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   const [activeTab, setActiveTab] = useState("loyalty-points-earned");
   const [birthday, setBirthday] = useState("");
   const [anniversary, setAnniversary] = useState("");
+  const [usedReferralCode, setUsedReferralCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [customerContext, setCustomerContext] = useState({
@@ -286,6 +287,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
         const profile = payload?.profile || {};
         setBirthday(normalizeStoredDate(profile?.birthday));
         setAnniversary(normalizeStoredDate(profile?.anniversary));
+        setUsedReferralCode(cleanText(profile?.usedReferralCode));
       }
     } catch (err) {
       if (!cancelled) {
@@ -598,8 +600,8 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       return;
     }
 
-    if (!cleanText(birthday) || !cleanText(anniversary)) {
-      setProfileError("Birthday and Anniversary Date are required.");
+    if (!cleanText(birthday) && !cleanText(anniversary) && !cleanText(usedReferralCode)) {
+      setProfileError("Enter birthday, anniversary date, or a referral code.");
       return;
     }
 
@@ -617,6 +619,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           customerName: customerContext.customerName,
           birthday: cleanText(birthday),
           anniversary: cleanText(anniversary),
+          usedReferralCode: cleanText(usedReferralCode),
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -630,7 +633,9 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
         ? `Profile saved. Awarded ${awardedPoints.toFixed(2)} loyalty points for ${awardedEvents
             .map((item) => item.name)
             .join(" and ")}.`
-        : "Profile saved. Birthday and anniversary points were already awarded earlier.";
+        : cleanText(payload?.customer?.usedReferralCode)
+          ? "Profile saved. Referral code was recorded."
+          : "Profile saved.";
 
       setProfileSuccess(successMessage);
       await loadData();
@@ -1014,6 +1019,25 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             }}
           />
 
+          <s-text-field
+            label="Referral Code"
+            value={usedReferralCode}
+            disabled={Boolean(cleanText(profile?.usedReferralCode))}
+            onInput={(event) => {
+              setUsedReferralCode(event.currentTarget.value);
+              setProfileError("");
+              setProfileSuccess("");
+            }}
+          />
+
+          {cleanText(profile?.usedReferralCode) ? (
+            <s-box border="base" borderRadius="small" padding="tight">
+              <s-text tone="success">
+                Referral code applied: {cleanText(profile?.usedReferralCode)}
+              </s-text>
+            </s-box>
+          ) : null}
+
           {profileError ? (
             <s-box border="base" borderRadius="small" padding="tight">
               <s-text tone="critical">{profileError}</s-text>
@@ -1033,8 +1057,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
               profileSubmitting ||
               loading ||
               !customerContext?.customerId ||
-              !cleanText(birthday) ||
-              !cleanText(anniversary)
+              (!cleanText(birthday) && !cleanText(anniversary) && !cleanText(usedReferralCode))
             }
             onClick={handleSaveProfile}
           >
