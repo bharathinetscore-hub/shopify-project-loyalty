@@ -1,5 +1,6 @@
 import cors from "../../../lib/cors";
 import nodemailer from "nodemailer";
+import pool from "../../../db/db";
 
 function cleanText(value) {
   return String(value || "").trim();
@@ -8,6 +9,116 @@ function cleanText(value) {
 function toNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
+}
+
+function parseCustomerId(value) {
+  return String(value || "").match(/\d+/)?.[0] || "";
+}
+
+async function ensureFeaturesTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS netst_features_table (
+      id SERIAL PRIMARY KEY,
+      loyalty_eligible BOOLEAN DEFAULT FALSE,
+      product_sharing_through_email BOOLEAN DEFAULT FALSE,
+      enable_referral_code_use_at_signup BOOLEAN DEFAULT FALSE,
+      login_to_see_points BOOLEAN DEFAULT FALSE,
+      enable_redeem_history BOOLEAN DEFAULT FALSE,
+      enable_refer_friend BOOLEAN DEFAULT FALSE,
+      enable_gift_certificate_generation BOOLEAN DEFAULT FALSE,
+      enable_tiers_info BOOLEAN DEFAULT FALSE,
+      enable_profile_info BOOLEAN DEFAULT FALSE,
+      enable_points_redeem_on_checkout BOOLEAN DEFAULT FALSE,
+      my_account_tab_heading TEXT,
+      loyalty_points_earned_label TEXT,
+      redeem_history_label TEXT,
+      refer_friend_label TEXT,
+      gift_card_label TEXT,
+      tiers_label TEXT,
+      update_profile_label TEXT,
+      product_redeem_label TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+}
+
+async function ensureCustomersTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS netst_customers_table (
+      id BIGSERIAL PRIMARY KEY,
+      customer_id TEXT NOT NULL UNIQUE,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NULL,
+      customer_eligible_for_loyalty BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+async function loadFeatureEligibility() {
+  await ensureFeaturesTable();
+
+  const res = await pool.query(
+    `
+      SELECT loyalty_eligible, enable_refer_friend
+      FROM netst_features_table
+      ORDER BY id DESC
+      LIMIT 1
+    `
+  );
+
+  const row = res.rows[0] || {};
+  return {
+    globalLoyaltyEnabled: Boolean(row.loyalty_eligible),
+    referFriendEnabled: Boolean(row.enable_refer_friend),
+  };
+}
+
+async function loadCustomerEligibility(customerId, customerEmail) {
+  await ensureCustomersTable();
+
+  const parsedCustomerId = parseCustomerId(customerId);
+  if (parsedCustomerId) {
+    const byId = await pool.query(
+      `
+        SELECT customer_eligible_for_loyalty
+        FROM netst_customers_table
+        WHERE (
+          TRIM(COALESCE(customer_id, '')) = TRIM($1)
+          OR regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $1
+        )
+        ORDER BY updated_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      `,
+      [parsedCustomerId]
+    );
+
+    if (byId.rows.length) {
+      return Boolean(byId.rows[0]?.customer_eligible_for_loyalty);
+    }
+  }
+
+  const normalizedEmail = cleanText(customerEmail);
+  if (normalizedEmail) {
+    const byEmail = await pool.query(
+      `
+        SELECT customer_eligible_for_loyalty
+        FROM netst_customers_table
+        WHERE LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($1))
+        ORDER BY updated_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      `,
+      [normalizedEmail]
+    );
+
+    if (byEmail.rows.length) {
+      return Boolean(byEmail.rows[0]?.customer_eligible_for_loyalty);
+    }
+  }
+
+  return false;
 }
 
 function getEmailTransportConfig() {
@@ -97,6 +208,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    const customerId = parseCustomerId(req.body?.customerId);
+    const customerEmail = cleanText(req.body?.customerEmail);
     const receiverEmail = cleanText(req.body?.receiverEmail);
     const referralCode = cleanText(req.body?.referralCode);
     const customerName = cleanText(req.body?.customerName);
@@ -107,6 +220,20 @@ export default async function handler(req, res) {
 
     if (!referralCode) {
       return res.status(400).json({ success: false, message: "Referral code is not available." });
+    }
+
+    const features = await loadFeatureEligibility();
+    const customerEligible = await loadCustomerEligibility(customerId, customerEmail);
+    const canShareReferralCode =
+      features.globalLoyaltyEnabled &&
+      features.referFriendEnabled &&
+      customerEligible;
+
+    if (!canShareReferralCode) {
+      return res.status(403).json({
+        success: false,
+        message: "This feature is disabled temporaryly.",
+      });
     }
 
     const emailResult = await sendReferralCodeEmail({

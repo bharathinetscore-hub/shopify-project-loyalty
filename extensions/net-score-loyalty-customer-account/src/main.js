@@ -228,7 +228,11 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     },
     globalLoyaltyEnabled: false,
     customerEligible: false,
+    referralCodeAtSignupEnabled: false,
+    referFriendEnabled: false,
     giftCertificateGenerationEnabled: false,
+    tiersInfoEnabled: false,
+    profileInfoEnabled: false,
   });
 
   async function loadData({ cancelled = false } = {}) {
@@ -288,9 +292,15 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
           },
           globalLoyaltyEnabled: Boolean(payload?.globalLoyaltyEnabled),
           customerEligible: Boolean(payload?.customerEligible),
+          referralCodeAtSignupEnabled: Boolean(
+            payload?.referralCodeAtSignupEnabled
+          ),
+          referFriendEnabled: Boolean(payload?.referFriendEnabled),
           giftCertificateGenerationEnabled: Boolean(
             payload?.giftCertificateGenerationEnabled
           ),
+          tiersInfoEnabled: Boolean(payload?.tiersInfoEnabled),
+          profileInfoEnabled: Boolean(payload?.profileInfoEnabled),
         });
         const profile = payload?.profile || {};
         setBirthday(normalizeStoredDate(profile?.birthday));
@@ -378,6 +388,22 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     Boolean(data?.globalLoyaltyEnabled) &&
     Boolean(data?.customerEligible) &&
     Boolean(data?.giftCertificateGenerationEnabled);
+  const canShowReferFriendSection =
+    Boolean(data?.globalLoyaltyEnabled) &&
+    Boolean(data?.customerEligible) &&
+    Boolean(data?.referFriendEnabled);
+  const canShowReferralCodeField =
+    Boolean(data?.globalLoyaltyEnabled) &&
+    Boolean(data?.customerEligible) &&
+    Boolean(data?.referralCodeAtSignupEnabled);
+  const canShowTiersSection =
+    Boolean(data?.globalLoyaltyEnabled) &&
+    Boolean(data?.customerEligible) &&
+    Boolean(data?.tiersInfoEnabled);
+  const canShowProfileSection =
+    Boolean(data?.globalLoyaltyEnabled) &&
+    Boolean(data?.customerEligible) &&
+    Boolean(data?.profileInfoEnabled);
   const enteredGiftCardPoints = cleanText(giftCardPoints) === "" ? NaN : Number(giftCardPoints);
   const calculatedRedeemAmount =
     Number.isFinite(enteredGiftCardPoints) && enteredGiftCardPoints > 0 && eachPointValue > 0
@@ -462,6 +488,11 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   async function handleShareReferralCode() {
     setReferFriendError("");
     setReferFriendSuccess("");
+
+    if (!canShowReferFriendSection) {
+      setReferFriendError("This feature is disabled temporaryly.");
+      return;
+    }
 
     if (!API_BASE) {
       setReferFriendError("Missing app URL for extension API");
@@ -602,6 +633,11 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     setProfileError("");
     setProfileSuccess("");
 
+    if (!canShowProfileSection) {
+      setProfileError("This feature is disabled temporaryly.");
+      return;
+    }
+
     if (!API_BASE) {
       setProfileError("Missing app URL for extension API");
       return;
@@ -612,8 +648,16 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       return;
     }
 
-    if (!cleanText(birthday) && !cleanText(anniversary) && !cleanText(usedReferralCode)) {
-      setProfileError("Enter birthday, anniversary date, or a referral code.");
+    if (
+      !cleanText(birthday) &&
+      !cleanText(anniversary) &&
+      (!canShowReferralCodeField || !cleanText(usedReferralCode))
+    ) {
+      setProfileError(
+        canShowReferralCodeField
+          ? "Enter birthday, anniversary date, or a referral code."
+          : "Enter birthday or anniversary date."
+      );
       return;
     }
 
@@ -777,6 +821,16 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   }
 
   function renderReferFriendLayout() {
+    if (!canShowReferFriendSection) {
+      return (
+        <s-box border="base" borderRadius="base" padding="base" background="base">
+          <s-box border="base" borderRadius="small" padding="tight">
+            <s-text tone="critical">This feature is disabled temporaryly.</s-text>
+          </s-box>
+        </s-box>
+      );
+    }
+
     return (
       <s-box border="base" borderRadius="base" padding="base" background="base">
         <s-stack direction="block" gap="base" alignItems="center">
@@ -928,6 +982,16 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   }
 
   function renderLoyaltyTiersLayout() {
+    if (!canShowTiersSection) {
+      return (
+        <s-box border="base" borderRadius="base" padding="base" background="base">
+          <s-box border="base" borderRadius="small" padding="tight">
+            <s-text tone="critical">This feature is disabled temporaryly.</s-text>
+          </s-box>
+        </s-box>
+      );
+    }
+
     const currentTier = loyaltyTierSummary?.currentTier || null;
     const nextTier = loyaltyTierSummary?.nextTier || null;
     const currentTierName = currentTier?.name || "None";
@@ -1016,6 +1080,16 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   }
 
   function renderUpdateProfileLayout() {
+    if (!canShowProfileSection) {
+      return (
+        <s-box border="base" borderRadius="base" padding="base" background="base">
+          <s-box border="base" borderRadius="small" padding="tight">
+            <s-text tone="critical">This feature is disabled temporaryly.</s-text>
+          </s-box>
+        </s-box>
+      );
+    }
+
     return (
       <s-box border="base" borderRadius="base" padding="base" background="base">
         <s-stack direction="block" gap="base">
@@ -1043,18 +1117,20 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             }}
           />
 
-          <s-text-field
-            label="Referral Code"
-            value={usedReferralCode}
-            disabled={Boolean(cleanText(profile?.usedReferralCode))}
-            onInput={(event) => {
-              setUsedReferralCode(event.currentTarget.value);
-              setProfileError("");
-              setProfileSuccess("");
-            }}
-          />
+          {canShowReferralCodeField ? (
+            <s-text-field
+              label="Referral Code"
+              value={usedReferralCode}
+              disabled={Boolean(cleanText(profile?.usedReferralCode))}
+              onInput={(event) => {
+                setUsedReferralCode(event.currentTarget.value);
+                setProfileError("");
+                setProfileSuccess("");
+              }}
+            />
+          ) : null}
 
-          {cleanText(profile?.usedReferralCode) ? (
+          {canShowReferralCodeField && cleanText(profile?.usedReferralCode) ? (
             <s-box border="base" borderRadius="small" padding="tight">
               <s-text tone="success">
                 Referral code applied: {cleanText(profile?.usedReferralCode)}
@@ -1097,7 +1173,9 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
               profileSubmitting ||
               loading ||
               !customerContext?.customerId ||
-              (!cleanText(birthday) && !cleanText(anniversary) && !cleanText(usedReferralCode))
+              (!cleanText(birthday) &&
+                !cleanText(anniversary) &&
+                (!canShowReferralCodeField || !cleanText(usedReferralCode)))
             }
             onClick={handleSaveProfile}
           >

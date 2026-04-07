@@ -196,6 +196,54 @@ async function ensureConfigTable(db) {
   `);
 }
 
+async function ensureFeaturesTable(db) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS netst_features_table (
+      id SERIAL PRIMARY KEY,
+      loyalty_eligible BOOLEAN DEFAULT FALSE,
+      product_sharing_through_email BOOLEAN DEFAULT FALSE,
+      enable_referral_code_use_at_signup BOOLEAN DEFAULT FALSE,
+      login_to_see_points BOOLEAN DEFAULT FALSE,
+      enable_redeem_history BOOLEAN DEFAULT FALSE,
+      enable_refer_friend BOOLEAN DEFAULT FALSE,
+      enable_gift_certificate_generation BOOLEAN DEFAULT FALSE,
+      enable_tiers_info BOOLEAN DEFAULT FALSE,
+      enable_profile_info BOOLEAN DEFAULT FALSE,
+      enable_points_redeem_on_checkout BOOLEAN DEFAULT FALSE,
+      my_account_tab_heading TEXT,
+      loyalty_points_earned_label TEXT,
+      redeem_history_label TEXT,
+      refer_friend_label TEXT,
+      gift_card_label TEXT,
+      tiers_label TEXT,
+      update_profile_label TEXT,
+      product_redeem_label TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+}
+
+async function loadProfileFeatureFlags(db) {
+  await ensureFeaturesTable(db);
+
+  const result = await db.query(
+    `
+      SELECT loyalty_eligible, enable_profile_info, enable_referral_code_use_at_signup
+      FROM netst_features_table
+      ORDER BY id DESC
+      LIMIT 1
+    `
+  );
+
+  const row = result.rows[0] || {};
+  return {
+    globalLoyaltyEnabled: Boolean(row.loyalty_eligible),
+    profileInfoEnabled: Boolean(row.enable_profile_info),
+    referralCodeAtSignupEnabled: Boolean(row.enable_referral_code_use_at_signup),
+  };
+}
+
 async function loadProfileAwardConfig(db) {
   const result = await db.query(
     `
@@ -367,6 +415,7 @@ export default async function handler(req, res) {
   try {
     await client.query("BEGIN");
 
+    await ensureFeaturesTable(client);
     await ensureCustomersTable(client);
     await ensureEventDetailsTable(client);
     await ensureEventsTable(client);
@@ -392,13 +441,6 @@ export default async function handler(req, res) {
     if (!customerId) {
       await client.query("ROLLBACK");
       return res.status(400).json({ error: "customerId is required" });
-    }
-
-    if (!isAdminSave && !birthday && !anniversary && !requestedUsedReferralCode) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        error: "Provide birthday, anniversary, or a referral code.",
-      });
     }
 
     const customerRes = await client.query(
@@ -434,6 +476,7 @@ export default async function handler(req, res) {
     );
 
     const existingCustomer = customerRes.rows[0] || {};
+    const featureFlags = await loadProfileFeatureFlags(client);
     const customerName =
       requestedCustomerName ||
       cleanText(existingCustomer.customer_name) ||
@@ -450,6 +493,11 @@ export default async function handler(req, res) {
     const finalUsedReferralCode = hasUsedReferralCode
       ? requestedUsedReferralCode || null
       : cleanText(existingCustomer.customer_used_referral_code) || null;
+    const customerEligible = Boolean(existingCustomer.customer_eligible_for_loyalty);
+    const canUseProfileInfo =
+      featureFlags.globalLoyaltyEnabled &&
+      featureFlags.profileInfoEnabled &&
+      customerEligible;
     let totalEarnedPoints = hasEarnedPoints
       ? toNumber(req.body?.totalEarnedPoints, 0)
       : toNumber(existingCustomer.total_earned_points, 0);
@@ -466,6 +514,34 @@ export default async function handler(req, res) {
 
     if (!resolvedReferralCode) {
       resolvedReferralCode = await generateUniqueReferralCode(client, customerId, customerName);
+    }
+
+    if (!isAdminSave && !canUseProfileInfo) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        error: "This feature is disabled temporaryly.",
+      });
+    }
+
+    if (!isAdminSave && finalUsedReferralCode && !featureFlags.referralCodeAtSignupEnabled) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        error: "This feature is disabled temporaryly.",
+      });
+    }
+
+    if (
+      !isAdminSave &&
+      !birthday &&
+      !anniversary &&
+      (!featureFlags.referralCodeAtSignupEnabled || !requestedUsedReferralCode)
+    ) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: featureFlags.referralCodeAtSignupEnabled
+          ? "Provide birthday, anniversary, or a referral code."
+          : "Provide birthday or anniversary.",
+      });
     }
 
     if (!isAdminSave) {
