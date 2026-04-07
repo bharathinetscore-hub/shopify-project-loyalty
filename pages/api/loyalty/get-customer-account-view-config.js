@@ -568,6 +568,7 @@ export default async function handler(req, res) {
       `
       SELECT
         loyalty_eligible,
+        enable_gift_certificate_generation,
         my_account_tab_heading,
         loyalty_points_earned_label,
         redeem_history_label,
@@ -583,6 +584,9 @@ export default async function handler(req, res) {
 
     const features = featuresRes.rows[0] || null;
     const globalLoyaltyEnabled = Boolean(features?.loyalty_eligible);
+    const giftCertificateGenerationEnabled = Boolean(
+      features?.enable_gift_certificate_generation
+    );
     await ensureCustomerReferralCode({
       customerIdRaw,
       customerIdParsed,
@@ -623,7 +627,7 @@ export default async function handler(req, res) {
           features?.refer_friend_label,
           DEFAULT_LABELS.referFriendLabel
         ),
-        giftCardLabel: withFallback(
+      giftCardLabel: withFallback(
           features?.gift_card_label,
           DEFAULT_LABELS.giftCardLabel
         ),
@@ -635,6 +639,7 @@ export default async function handler(req, res) {
       },
       globalLoyaltyEnabled,
       customerEligible,
+      giftCertificateGenerationEnabled,
       customerLookup: {
         inputCustomerIdRaw: customerIdRaw,
         inputCustomerIdParsed: customerIdParsed,

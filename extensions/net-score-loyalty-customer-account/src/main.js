@@ -226,6 +226,9 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       loyaltyPointValue: 1,
       giftcardExpiryDays: 0,
     },
+    globalLoyaltyEnabled: false,
+    customerEligible: false,
+    giftCertificateGenerationEnabled: false,
   });
 
   async function loadData({ cancelled = false } = {}) {
@@ -283,6 +286,11 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
             loyaltyPointValue: 1,
             giftcardExpiryDays: 0,
           },
+          globalLoyaltyEnabled: Boolean(payload?.globalLoyaltyEnabled),
+          customerEligible: Boolean(payload?.customerEligible),
+          giftCertificateGenerationEnabled: Boolean(
+            payload?.giftCertificateGenerationEnabled
+          ),
         });
         const profile = payload?.profile || {};
         setBirthday(normalizeStoredDate(profile?.birthday));
@@ -366,6 +374,10 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       : 0;
   const isGiftCardEligible =
     minimumRedemptionPoints <= 0 || availablePoints >= minimumRedemptionPoints;
+  const canShowGiftCardSection =
+    Boolean(data?.globalLoyaltyEnabled) &&
+    Boolean(data?.customerEligible) &&
+    Boolean(data?.giftCertificateGenerationEnabled);
   const enteredGiftCardPoints = cleanText(giftCardPoints) === "" ? NaN : Number(giftCardPoints);
   const calculatedRedeemAmount =
     Number.isFinite(enteredGiftCardPoints) && enteredGiftCardPoints > 0 && eachPointValue > 0
@@ -817,6 +829,16 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
   }
 
   function renderGenerateGiftCardLayout() {
+    if (!canShowGiftCardSection) {
+      return (
+        <s-box border="base" borderRadius="base" padding="base" background="base">
+          <s-box border="base" borderRadius="small" padding="tight">
+            <s-text tone="critical">This feature is disabled temporaryly.</s-text>
+          </s-box>
+        </s-box>
+      );
+    }
+
     return (
       <s-box border="base" borderRadius="base" padding="base" background="base">
         <s-stack direction="block" gap="base">
