@@ -442,7 +442,7 @@ export default async function handler(req, res) {
     const finalCustomerEmail = customerEmail || cleanText(existingCustomer.customer_email) || null;
     const finalEligibleForLoyalty = hasEligibleForLoyalty
       ? requestedEligibleForLoyalty
-      : true;
+      : Boolean(existingCustomer.customer_eligible_for_loyalty);
     const existingReferralCode = cleanText(existingCustomer.customer_referral_code) || null;
     const finalReferralCode = hasReferralCode
       ? requestedReferralCode || null
