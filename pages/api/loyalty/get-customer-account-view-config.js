@@ -50,6 +50,11 @@ async function ensureFeaturesTable() {
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `);
+
+  await pool.query(`
+    ALTER TABLE netst_features_table
+    ADD COLUMN IF NOT EXISTS loyalty_points_earned_label TEXT
+  `);
 }
 
 async function ensureCustomersTable() {
