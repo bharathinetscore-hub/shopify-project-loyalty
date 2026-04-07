@@ -480,7 +480,7 @@ export default async function handler(req, res) {
           [
             toNumber(customerId, 0),
             dateCreated,
-            loyaltyDiscountLabel,
+            checkoutRedeemEvent.name,
             0,
             loyaltyRedeemPoints,
             pointsLeft,
