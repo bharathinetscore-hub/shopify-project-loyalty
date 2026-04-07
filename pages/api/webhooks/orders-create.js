@@ -240,7 +240,7 @@ async function getCustomerTierMultiplier(customerId) {
   return toNumber(tierRes.rows[0]?.points_per_dollar, null);
 }
 
-async function getEventOneName() {
+async function getEventDefinition(eventId, fallbackName) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS netst_events_table (
       id BIGSERIAL PRIMARY KEY,
@@ -257,15 +257,16 @@ async function getEventOneName() {
     `
       SELECT event_id, event_name
       FROM netst_events_table
-      WHERE event_id = '1'
+      WHERE event_id = $1
       ORDER BY id DESC
       LIMIT 1
-    `
+    `,
+    [String(eventId)]
   );
   const row = eventRes.rows[0] || null;
   return {
-    id: Number(row?.event_id || 1),
-    name: String(row?.event_name || "Order Placed"),
+    id: Number(row?.event_id || eventId),
+    name: String(row?.event_name || fallbackName),
   };
 }
 
@@ -402,11 +403,6 @@ export default async function handler(req, res) {
 
   try {
     const payload = rawBody ? JSON.parse(rawBody) : {};
-    const fulfillmentStatus = String(payload?.fulfillment_status || "").toLowerCase();
-    if (fulfillmentStatus !== "fulfilled") {
-      return res.status(200).send("Ignored - not fulfilled");
-    }
-
     const orderId = toNumber(payload?.id, 0);
     if (!orderId) return res.status(200).send("No order id");
 
@@ -431,43 +427,24 @@ export default async function handler(req, res) {
     const loyaltyDiscountAmount = toNumber(noteAttributeMap.netscore_loyalty_amount, 0);
     const loyaltyDiscountLabel = cleanText(noteAttributeMap.netscore_loyalty_label) || "Loyalty points applied";
     const loyaltyRuleId = cleanText(noteAttributeMap.netscore_loyalty_rule_id);
+    const fulfillmentStatus = String(payload?.fulfillment_status || "").toLowerCase();
 
-    const pointsEarned = await calculateOrderPoints({
-      customerId,
-      lineItems: Array.isArray(payload?.line_items) ? payload.line_items : [],
-    });
-
-    const eventOne = await getEventOneName();
     const startingCustomerPoints = await loadCustomerPoints(customerId);
     let runningTotalEarned = startingCustomerPoints.totalEarned;
     let runningTotalRedeemed = startingCustomerPoints.totalRedeemed;
     let runningAvailable = startingCustomerPoints.available;
 
-    const existing = await pool.query(
-      `
-        SELECT id
-        FROM netst_customer__event_details_table
-        WHERE transaction_id = $1
-          AND event_id = $2
-        LIMIT 1
-      `,
-      [orderId, eventOne.id]
-    );
-    if (existing.rows.length > 0) {
-      return res.status(200).send("Already recorded");
-    }
-
     if (loyaltyRedeemPoints > 0) {
+      const checkoutRedeemEvent = await getEventDefinition(21, "Redeemed Points on Checkout");
       const existingRedeem = await pool.query(
         `
           SELECT id
           FROM netst_customer__event_details_table
           WHERE transaction_id = $1
-            AND points_type = 'negative'
-            AND COALESCE(comments, '') = $2
+            AND event_id = $2
           LIMIT 1
         `,
-        [orderId, `Applied from checkout loyalty points (${loyaltyRuleId || loyaltyDiscountLabel})`]
+        [orderId, checkoutRedeemEvent.id]
       );
 
       if (!existingRedeem.rows.length) {
@@ -519,13 +496,46 @@ export default async function handler(req, res) {
             "negative",
             createdAt,
             new Date(),
-            null,
+            checkoutRedeemEvent.id,
           ]
         );
 
         runningTotalRedeemed += loyaltyRedeemPoints;
         runningAvailable = pointsLeft;
+
+        await upsertCustomerPoints({
+          customerId,
+          customerName,
+          customerEmail: receiverEmail,
+          totalEarned: runningTotalEarned,
+          totalRedeemed: runningTotalRedeemed,
+          available: runningAvailable,
+        });
       }
+    }
+
+    if (fulfillmentStatus !== "fulfilled") {
+      return res.status(200).send("Redeem recorded - awaiting fulfillment");
+    }
+
+    const pointsEarned = await calculateOrderPoints({
+      customerId,
+      lineItems: Array.isArray(payload?.line_items) ? payload.line_items : [],
+    });
+
+    const eventOne = await getEventDefinition(1, "Order Placed");
+    const existing = await pool.query(
+      `
+        SELECT id
+        FROM netst_customer__event_details_table
+        WHERE transaction_id = $1
+          AND event_id = $2
+        LIMIT 1
+      `,
+      [orderId, eventOne.id]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(200).send("Order earned points already recorded");
     }
 
     const pointsLeftAfterEarn = Math.max(0, runningAvailable + pointsEarned);
