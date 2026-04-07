@@ -486,27 +486,6 @@ export default async function handler(req, res) {
         });
       }
 
-      const existingAwards = await loadExistingAwards(client, customerId, [9, 10]);
-      let transactionSeed = Date.now();
-      const profileEvents = [
-        birthday
-          ? {
-              eventId: birthdayEvent.id,
-              eventName: birthdayEvent.name,
-              points: config.birthdayPoints,
-              profileDate: birthday,
-            }
-          : null,
-        anniversary
-          ? {
-              eventId: anniversaryEvent.id,
-              eventName: anniversaryEvent.name,
-              points: config.anniversaryPoints,
-              profileDate: anniversary,
-            }
-          : null,
-      ].filter(Boolean);
-
       const pointsExpirationDate = buildPointsExpirationDate(config.pointsExpirationDays);
       const pointsExpirationDaysValue =
         config.pointsExpirationDays > 0 ? String(config.pointsExpirationDays) : null;
@@ -610,70 +589,19 @@ export default async function handler(req, res) {
         }
       }
 
-      for (const event of profileEvents) {
-        if (!event?.profileDate) {
-          continue;
-        }
+      if (birthday) {
+        skippedEvents.push({
+          id: birthdayEvent.id,
+          name: birthdayEvent.name,
+          reason: "scheduled_for_award_date",
+        });
+      }
 
-        if (existingAwards.has(event.eventId)) {
-          skippedEvents.push({
-            id: event.eventId,
-            name: event.eventName,
-            reason: "already_awarded",
-          });
-          continue;
-        }
-
-        const pointsEarned = toNumber(event.points, 0);
-        totalEarnedPoints += pointsEarned;
-        availablePoints = totalEarnedPoints - totalRedeemedPoints;
-        newPointsAwarded += pointsEarned;
-
-        await client.query(
-          `
-            INSERT INTO netst_customer__event_details_table (
-              customer_id,
-              date_created,
-              event_name,
-              points_earned,
-              points_redeemed,
-              points_left,
-              transaction_id,
-              amount,
-              gift_code,
-              receiver_email,
-              refer_friend_id,
-              comments,
-              points_expiration_date,
-              points_expiration_days,
-              expired,
-              points_type,
-              created_at,
-              updated_at,
-              event_id
-            )
-            VALUES (
-              $1, CURRENT_DATE, $2, $3, 0, $4, $5, 0, NULL, $6, NULL, $7, $8, $9, FALSE, 'positive', NOW(), NOW(), $10
-            )
-          `,
-          [
-            toNumber(customerId, 0),
-            event.eventName,
-            pointsEarned,
-            availablePoints,
-            transactionSeed++,
-            finalCustomerEmail,
-            `Profile saved for ${event.eventName} date ${event.profileDate}`,
-            pointsExpirationDate,
-            pointsExpirationDaysValue,
-            event.eventId,
-          ]
-        );
-
-        awardedEvents.push({
-          id: event.eventId,
-          name: event.eventName,
-          pointsEarned,
+      if (anniversary) {
+        skippedEvents.push({
+          id: anniversaryEvent.id,
+          name: anniversaryEvent.name,
+          reason: "scheduled_for_award_date",
         });
       }
     }

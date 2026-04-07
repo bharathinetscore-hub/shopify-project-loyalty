@@ -15,7 +15,7 @@ async function ensureFeaturesTable() {
       enable_profile_info BOOLEAN DEFAULT FALSE,
       enable_points_redeem_on_checkout BOOLEAN DEFAULT FALSE,
       my_account_tab_heading TEXT,
-      enable_history_label TEXT,
+      loyalty_points_earned_label TEXT,
       redeem_history_label TEXT,
       refer_friend_label TEXT,
       gift_card_label TEXT,

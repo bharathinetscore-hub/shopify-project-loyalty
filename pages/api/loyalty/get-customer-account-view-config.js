@@ -3,6 +3,7 @@ import cors from "../../../lib/cors";
 
 const DEFAULT_LABELS = {
   myAccountTabHeading: "Loyalty Rewards Information",
+  loyaltyPointsEarnedLabel: "Loyalty Points Earned",
   redeemHistoryLabel: "Redeem Points History",
   referFriendLabel: "Refer Your Friend",
   giftCardLabel: "Generate Gift Card",
@@ -38,7 +39,7 @@ async function ensureFeaturesTable() {
       enable_profile_info BOOLEAN DEFAULT FALSE,
       enable_points_redeem_on_checkout BOOLEAN DEFAULT FALSE,
       my_account_tab_heading TEXT,
-      enable_history_label TEXT,
+      loyalty_points_earned_label TEXT,
       redeem_history_label TEXT,
       refer_friend_label TEXT,
       gift_card_label TEXT,
@@ -563,6 +564,7 @@ export default async function handler(req, res) {
       SELECT
         loyalty_eligible,
         my_account_tab_heading,
+        loyalty_points_earned_label,
         redeem_history_label,
         refer_friend_label,
         gift_card_label,
@@ -605,6 +607,10 @@ export default async function handler(req, res) {
         myAccountTabHeading: withFallback(
           features?.my_account_tab_heading,
           DEFAULT_LABELS.myAccountTabHeading
+        ),
+        loyaltyPointsEarnedLabel: withFallback(
+          features?.loyalty_points_earned_label,
+          DEFAULT_LABELS.loyaltyPointsEarnedLabel
         ),
         redeemHistoryLabel: withFallback(
           features?.redeem_history_label,

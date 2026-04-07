@@ -269,7 +269,7 @@ export default function LoyaltyFeaturesPage() {
     enableProfileInfo: false,
     enablePointsRedeemOnCheckout: false,
     myAccountTabHeading: "",
-    enableHistoryLabel: "",
+    loyaltyPointsEarnedLabel: "",
     redeemHistoryLabel: "",
     referFriendLabel: "",
     giftCardLabel: "",
@@ -312,7 +312,7 @@ export default function LoyaltyFeaturesPage() {
           enableProfileInfo: !!data.enable_profile_info,
           enablePointsRedeemOnCheckout: !!data.enable_points_redeem_on_checkout,
           myAccountTabHeading: data.my_account_tab_heading ?? "",
-          enableHistoryLabel: data.enable_history_label ?? "",
+          loyaltyPointsEarnedLabel: data.loyalty_points_earned_label ?? "",
           redeemHistoryLabel: data.redeem_history_label ?? "",
           referFriendLabel: data.refer_friend_label ?? "",
           giftCardLabel: data.gift_card_label ?? "",
@@ -474,10 +474,12 @@ export default function LoyaltyFeaturesPage() {
           <FormLayout>
             <FormLayout.Group>
               <TextField
-                label="My account tab heading"
+                label="Loyalty points earned"
                 autoComplete="off"
-                value={featuresConfig.myAccountTabHeading}
-                onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, myAccountTabHeading: value }))}
+                value={featuresConfig.loyaltyPointsEarnedLabel}
+                onChange={(value) =>
+                  setFeaturesConfig((prev) => ({ ...prev, loyaltyPointsEarnedLabel: value }))
+                }
               />
               <TextField
                 label="Redeem history"
@@ -485,6 +487,18 @@ export default function LoyaltyFeaturesPage() {
                 value={featuresConfig.redeemHistoryLabel}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, redeemHistoryLabel: value }))}
               />
+            </FormLayout.Group>
+
+            <FormLayout.Group>
+              <TextField
+                label="My account tab heading"
+                autoComplete="off"
+                value={featuresConfig.myAccountTabHeading}
+                onChange={(value) =>
+                  setFeaturesConfig((prev) => ({ ...prev, myAccountTabHeading: value }))
+                }
+              />
+              <div />
             </FormLayout.Group>
 
             <FormLayout.Group>

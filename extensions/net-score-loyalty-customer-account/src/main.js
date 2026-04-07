@@ -1110,7 +1110,9 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
                   }}
                 >
                 <s-text>
-                  {tab.id === "redeem-points-history"
+                  {tab.id === "loyalty-points-earned"
+                    ? labels.loyaltyPointsEarnedLabel || tab.label
+                    : tab.id === "redeem-points-history"
                     ? labels.redeemHistoryLabel || tab.label
                     : tab.id === "refer-your-friend"
                       ? labels.referFriendLabel || tab.label

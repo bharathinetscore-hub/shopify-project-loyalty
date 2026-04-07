@@ -1,6 +1,7 @@
 const http = require("http");
 const next = require("next");
 const { parse } = require("url");
+const { startLoyaltyAwardsScheduler } = require("./lib/loyalty-awards-scheduler");
 
 const port = parseInt(process.env.PORT || "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
@@ -45,6 +46,8 @@ function buildAppUrl(pathname, query) {
 }
 
 app.prepare().then(() => {
+  startLoyaltyAwardsScheduler();
+
   http
     .createServer((req, res) => {
       const requestId = (req.headers["x-request-id"] || makeRequestId()).toString();
