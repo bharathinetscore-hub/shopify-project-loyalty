@@ -327,16 +327,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   const [viewingCustomerEvents, setViewingCustomerEvents] = useState([]);
   const [viewingCustomerEventsLoading, setViewingCustomerEventsLoading] = useState(false);
   const [viewingCustomerEventsError, setViewingCustomerEventsError] = useState("");
-  const [isReviewRewardModalOpen, setIsReviewRewardModalOpen] = useState(false);
-  const [isReviewRewardSaving, setIsReviewRewardSaving] = useState(false);
-  const [reviewRewardForm, setReviewRewardForm] = useState({
-    customerId: "",
-    customerName: "",
-    customerEmail: "",
-    productId: "",
-    reviewReference: "",
-    reviewComment: "",
-  });
   const [reviewRewardsRows, setReviewRewardsRows] = useState([]);
   const [reviewRewardsLoading, setReviewRewardsLoading] = useState(false);
   const [reviewRewardsError, setReviewRewardsError] = useState("");
@@ -614,6 +604,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
   const tabs = [
     { id: "customers", content: "Customers" },
+    { id: "reviews", content: "Reviews" },
     { id: "events", content: "Events" },
     { id: "items", content: "Items" },
     { id: "giftcards", content: "Giftcards" },
@@ -622,6 +613,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
   const tabRoutes = [
     "/loyalty-customers",
+    "/loyalty-reviews",
     "/loyalty-events",
     "/loyalty-items",
     "/loyalty-giftcard-generated",
@@ -634,19 +626,23 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       const searchTab = new URLSearchParams(window.location.search).get("tab");
 
       if (searchTab === "events") {
-        setActiveTab(1);
-        return;
-      }
-      if (searchTab === "items") {
         setActiveTab(2);
         return;
       }
-      if (searchTab === "giftcard-generated") {
+      if (searchTab === "items") {
         setActiveTab(3);
         return;
       }
-      if (searchTab === "loyalty-config") {
+      if (searchTab === "giftcard-generated") {
         setActiveTab(4);
+        return;
+      }
+      if (searchTab === "loyalty-config") {
+        setActiveTab(5);
+        return;
+      }
+      if (searchTab === "reviews") {
+        setActiveTab(1);
         return;
       }
       if (searchTab === "customers") {
@@ -655,23 +651,26 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       }
 
       if (forcedTab) {
-        if (forcedTab === "events") setActiveTab(1);
-        else if (forcedTab === "items") setActiveTab(2);
-        else if (forcedTab === "giftcard-generated") setActiveTab(3);
-        else if (forcedTab === "loyalty-config") setActiveTab(4);
+        if (forcedTab === "reviews") setActiveTab(1);
+        else if (forcedTab === "events") setActiveTab(2);
+        else if (forcedTab === "items") setActiveTab(3);
+        else if (forcedTab === "giftcard-generated") setActiveTab(4);
+        else if (forcedTab === "loyalty-config") setActiveTab(5);
         else setActiveTab(0);
         return;
       }
 
       const path = window.location.pathname;
-      if (path.includes("/loyalty-events")) {
+      if (path.includes("/loyalty-reviews")) {
         setActiveTab(1);
-      } else if (path.includes("/loyalty-items")) {
+      } else if (path.includes("/loyalty-events")) {
         setActiveTab(2);
-      } else if (path.includes("/loyalty-giftcard-generated")) {
+      } else if (path.includes("/loyalty-items")) {
         setActiveTab(3);
-      } else if (path.includes("/loyalty-config")) {
+      } else if (path.includes("/loyalty-giftcard-generated")) {
         setActiveTab(4);
+      } else if (path.includes("/loyalty-config")) {
+        setActiveTab(5);
       } else {
         setActiveTab(0);
       }
@@ -977,18 +976,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     loadCustomerEvents(row);
   }
 
-  function openReviewRewardModal(row) {
-    setReviewRewardForm({
-      customerId: String(row?.id || ""),
-      customerName: String(row?.name || ""),
-      customerEmail: String(row?.email || ""),
-      productId: "",
-      reviewReference: "",
-      reviewComment: "",
-    });
-    setIsReviewRewardModalOpen(true);
-  }
-
   function openReviewEntryModal() {
     setReviewEntryForm({
       sourceApp: "manual",
@@ -1199,90 +1186,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       setCustomersError(error?.message || "Failed to save customer profile");
     } finally {
       setIsCustomerProfileSaving(false);
-    }
-  }
-
-  async function submitReviewReward() {
-    const customerId = String(reviewRewardForm.customerId || "").trim();
-    const reviewReference = String(reviewRewardForm.reviewReference || "").trim();
-
-    if (!customerId) {
-      setCustomersError("Customer ID is required.");
-      return;
-    }
-
-    if (!reviewReference) {
-      setCustomersError("Review reference is required.");
-      return;
-    }
-
-    try {
-      setIsReviewRewardSaving(true);
-      setCustomersError("");
-
-      const res = await fetch("/api/loyalty/approve-review-reward", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          customerId,
-          productId: reviewRewardForm.productId,
-          reviewReference,
-          reviewComment: reviewRewardForm.reviewComment,
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Failed to approve review reward");
-      }
-
-      const savedCustomer = data.customer || {};
-      setCustomersRows((prev) =>
-        prev.map((row) =>
-          String(row.id) === String(savedCustomer.id)
-            ? {
-                ...row,
-                totalEarnedPoints: Number(savedCustomer.totalEarnedPoints || 0),
-                totalRedeemedPoints: Number(savedCustomer.totalRedeemedPoints || 0),
-                availablePoints: Number(savedCustomer.availablePoints || 0),
-              }
-            : row
-        )
-      );
-
-      setViewingCustomer((prev) =>
-        prev && String(prev.id) === String(savedCustomer.id)
-          ? {
-              ...prev,
-              totalEarnedPoints: Number(savedCustomer.totalEarnedPoints || 0),
-              totalRedeemedPoints: Number(savedCustomer.totalRedeemedPoints || 0),
-              availablePoints: Number(savedCustomer.availablePoints || 0),
-            }
-          : prev
-      );
-
-      if (viewingCustomer && String(viewingCustomer.id) === String(savedCustomer.id)) {
-        await loadCustomerEvents(savedCustomer);
-      }
-
-      setCustomersInfo(data?.message || `Approved review reward for customer ${savedCustomer.id}.`);
-      setIsReviewRewardModalOpen(false);
-      setReviewRewardForm({
-        customerId: "",
-        customerName: "",
-        customerEmail: "",
-        productId: "",
-        reviewReference: "",
-        reviewComment: "",
-      });
-    } catch (error) {
-      console.error("submitReviewReward error:", error);
-      setCustomersError(error?.message || "Failed to approve review reward");
-    } finally {
-      setIsReviewRewardSaving(false);
     }
   }
 
@@ -1995,7 +1898,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           "Total Earned Points",
           "Total Redeemed Points",
           "Available Points",
-          "Review Reward",
           "Edit",
           "Eligible?",
           "View",
@@ -2007,9 +1909,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           Number(row.totalEarnedPoints || 0).toFixed(2),
           Number(row.totalRedeemedPoints || 0).toFixed(2),
           Number(row.availablePoints || 0).toFixed(2),
-          <Button size="slim" onClick={() => openReviewRewardModal(row)}>
-            Approve Review Reward
-          </Button>,
           <Button size="slim" onClick={() => openCustomerEditModal(row)}>
             Edit
           </Button>,
@@ -2031,113 +1930,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
         perPage={customersPerPage}
         setPerPage={setCustomersPerPage}
       />
-
-      <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #d9e4f7" }}>
-        <div style={ui.sectionHeaderRow}>
-          <div>
-            <h2 style={ui.sectionTitle}>Review Rewards</h2>
-            <p style={ui.sectionSubtitle}>
-              Register reviews from any app here, mark them approved, and award loyalty points from one place.
-            </p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={ui.statPill}>
-              {reviewRewardsLoading ? "Loading..." : `${reviewRewardsRows.length} review entr${reviewRewardsRows.length === 1 ? "y" : "ies"}`}
-            </div>
-            <Button variant="primary" onClick={openReviewEntryModal}>
-              Add Review Entry
-            </Button>
-          </div>
-        </div>
-
-        <div style={ui.tools}>
-          <div style={ui.group}>
-            <div style={ui.fieldWrap}>
-              <TextField
-                label="Search review rewards"
-                labelHidden
-                value={reviewRewardsSearch}
-                placeholder="Search by reference, customer, product, or review text"
-                autoComplete="off"
-                onChange={setReviewRewardsSearch}
-              />
-            </div>
-            <div style={ui.fieldSelectWrap}>
-              <Select
-                label="Source app"
-                labelHidden
-                options={reviewSourceOptions}
-                value={reviewRewardsSource}
-                onChange={setReviewRewardsSource}
-              />
-            </div>
-            <div style={ui.fieldSelectWrap}>
-              <Select
-                label="Reward status"
-                labelHidden
-                options={reviewStatusOptions}
-                value={reviewRewardsStatus}
-                onChange={setReviewRewardsStatus}
-              />
-            </div>
-          </div>
-        </div>
-
-        {reviewRewardsError ? (
-          <div style={{ marginBottom: 12 }}>
-            <Banner tone="critical">
-              <p>{reviewRewardsError}</p>
-            </Banner>
-          </div>
-        ) : null}
-        {!reviewRewardsError && reviewRewardsInfo ? (
-          <div style={{ marginBottom: 12 }}>
-            <Banner tone="success">
-              <p>{reviewRewardsInfo}</p>
-            </Banner>
-          </div>
-        ) : null}
-
-        <PaginatedTable
-          columns={[
-            "Source",
-            "Reference",
-            "Customer",
-            "Product",
-            "Comment",
-            "Approved",
-            "Rewarded",
-            "Actions",
-          ]}
-          rows={reviewRewardsRows.map((row) => [
-            row.sourceApp || "-",
-            row.reviewReference || "-",
-            row.customerName || row.customerEmail || row.customerId || "-",
-            row.productId || "-",
-            row.reviewText || "-",
-            row.approved ? "Yes" : "No",
-            row.rewarded ? `Yes${row.rewardPoints ? ` (${Number(row.rewardPoints).toFixed(2)})` : ""}` : "No",
-            <div key={`review-actions-${row.id}`} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Button size="slim" onClick={() => toggleReviewApproved(row)}>
-                {row.approved ? "Mark Pending" : "Mark Approved"}
-              </Button>
-              <Button
-                size="slim"
-                variant="primary"
-                disabled={!row.approved || row.rewarded || (!row.customerId && !row.customerEmail)}
-                onClick={() => awardReviewFromEntry(row)}
-              >
-                Award Points
-              </Button>
-            </div>,
-          ])}
-          page={reviewRewardsPage}
-          setPage={setReviewRewardsPage}
-          perPage={reviewRewardsPerPage}
-          setPerPage={setReviewRewardsPerPage}
-          emptyLabel={reviewRewardsLoading ? "Loading review rewards..." : "No review entries found"}
-        />
-      </div>
 
       <Modal
         open={isCustomerPickerOpen}
@@ -2213,201 +2005,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
               })
             )}
           </div>
-        </Modal.Section>
-      </Modal>
-
-      <Modal
-        open={isReviewEntryModalOpen}
-        onClose={() => {
-          if (isReviewEntrySaving) return;
-          setIsReviewEntryModalOpen(false);
-        }}
-        title="Add review entry"
-        primaryAction={{
-          content: isReviewEntrySaving ? "Saving..." : "Save Review Entry",
-          onAction: saveReviewEntry,
-          loading: isReviewEntrySaving,
-        }}
-        secondaryActions={[
-          {
-            content: "Cancel",
-            onAction: () => {
-              if (isReviewEntrySaving) return;
-              setIsReviewEntryModalOpen(false);
-            },
-          },
-        ]}
-      >
-        <Modal.Section>
-          <FormLayout>
-            <Select
-              label="Source App"
-              options={reviewSourceOptions.filter((option) => option.value !== "all")}
-              value={reviewEntryForm.sourceApp}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, sourceApp: value }))
-              }
-            />
-            <Select
-              label="Saved Customer"
-              options={[
-                { label: "Select saved customer", value: "" },
-                ...customersRows.map((row) => ({
-                  label: `${row.name || "Unnamed Customer"}${row.email ? ` (${row.email})` : ""}`,
-                  value: String(row.id || ""),
-                })),
-              ]}
-              value={reviewEntryForm.customerId}
-              onChange={handleReviewEntryCustomerChange}
-            />
-            <TextField
-              label="Customer ID"
-              value={reviewEntryForm.customerId}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, customerId: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Customer Name"
-              value={reviewEntryForm.customerName}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, customerName: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Customer Email"
-              value={reviewEntryForm.customerEmail}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, customerEmail: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Review Reference"
-              value={reviewEntryForm.reviewReference}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, reviewReference: value }))
-              }
-              autoComplete="off"
-              helpText="Use the review id, URL, or any unique source reference."
-            />
-            <TextField
-              label="Product ID"
-              value={reviewEntryForm.productId}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, productId: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Review Comment"
-              value={reviewEntryForm.reviewText}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, reviewText: value }))
-              }
-              autoComplete="off"
-              multiline={4}
-            />
-            <Select
-              label="Review Status"
-              options={[
-                { label: "Pending", value: "pending" },
-                { label: "Approved", value: "approved" },
-                { label: "Published", value: "published" },
-              ]}
-              value={reviewEntryForm.reviewStatus}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({
-                  ...prev,
-                  reviewStatus: value,
-                  approved: value === "approved" || value === "published",
-                }))
-              }
-            />
-            <TextField
-              label="Admin Notes"
-              value={reviewEntryForm.adminNotes}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, adminNotes: value }))
-              }
-              autoComplete="off"
-              multiline={3}
-            />
-          </FormLayout>
-        </Modal.Section>
-      </Modal>
-
-      <Modal
-        open={isReviewRewardModalOpen}
-        onClose={() => {
-          if (isReviewRewardSaving) return;
-          setIsReviewRewardModalOpen(false);
-        }}
-        title="Approve review reward"
-        primaryAction={{
-          content: isReviewRewardSaving ? "Saving..." : "Approve Review Reward",
-          onAction: submitReviewReward,
-          loading: isReviewRewardSaving,
-        }}
-        secondaryActions={[
-          {
-            content: "Cancel",
-            onAction: () => {
-              if (isReviewRewardSaving) return;
-              setIsReviewRewardModalOpen(false);
-            },
-          },
-        ]}
-      >
-        <Modal.Section>
-          <FormLayout>
-            <TextField
-              label="Customer ID"
-              value={reviewRewardForm.customerId}
-              readOnly
-              autoComplete="off"
-            />
-            <TextField
-              label="Customer Name"
-              value={reviewRewardForm.customerName}
-              readOnly
-              autoComplete="off"
-            />
-            <TextField
-              label="Customer Email"
-              value={reviewRewardForm.customerEmail}
-              readOnly
-              autoComplete="off"
-            />
-            <TextField
-              label="Review Reference"
-              value={reviewRewardForm.reviewReference}
-              onChange={(value) =>
-                setReviewRewardForm((prev) => ({ ...prev, reviewReference: value }))
-              }
-              autoComplete="off"
-              helpText="Use a unique review id, URL, or approval reference to avoid duplicate rewards."
-            />
-            <TextField
-              label="Product ID"
-              value={reviewRewardForm.productId}
-              onChange={(value) =>
-                setReviewRewardForm((prev) => ({ ...prev, productId: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Admin Notes"
-              value={reviewRewardForm.reviewComment}
-              onChange={(value) =>
-                setReviewRewardForm((prev) => ({ ...prev, reviewComment: value }))
-              }
-              autoComplete="off"
-              multiline={3}
-            />
-          </FormLayout>
         </Modal.Section>
       </Modal>
 
@@ -2612,6 +2209,241 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
               )}
             </div>
           )}
+        </Modal.Section>
+      </Modal>
+    </LegacyCard>
+  );
+
+  const reviewsPanel = (
+    <LegacyCard sectioned>
+      <h2 style={ui.title}>Review Rewards</h2>
+
+      <div style={ui.sectionHeaderRow}>
+        <div>
+          <p style={ui.sectionSubtitle}>
+            Add reviews from any source, mark them approved, and award loyalty points from one place.
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={ui.statPill}>
+            {reviewRewardsLoading
+              ? "Loading..."
+              : `${reviewRewardsRows.length} review entr${reviewRewardsRows.length === 1 ? "y" : "ies"}`}
+          </div>
+          <Button variant="primary" onClick={openReviewEntryModal}>
+            Add Review Entry
+          </Button>
+        </div>
+      </div>
+
+      <div style={ui.tools}>
+        <div style={ui.group}>
+          <div style={ui.fieldWrap}>
+            <TextField
+              label="Search review rewards"
+              labelHidden
+              value={reviewRewardsSearch}
+              placeholder="Search by reference, customer, product, or review text"
+              autoComplete="off"
+              onChange={setReviewRewardsSearch}
+            />
+          </div>
+          <div style={ui.fieldSelectWrap}>
+            <Select
+              label="Source app"
+              labelHidden
+              options={reviewSourceOptions}
+              value={reviewRewardsSource}
+              onChange={setReviewRewardsSource}
+            />
+          </div>
+          <div style={ui.fieldSelectWrap}>
+            <Select
+              label="Reward status"
+              labelHidden
+              options={reviewStatusOptions}
+              value={reviewRewardsStatus}
+              onChange={setReviewRewardsStatus}
+            />
+          </div>
+        </div>
+      </div>
+
+      {reviewRewardsError ? (
+        <div style={{ marginBottom: 12 }}>
+          <Banner tone="critical">
+            <p>{reviewRewardsError}</p>
+          </Banner>
+        </div>
+      ) : null}
+      {!reviewRewardsError && reviewRewardsInfo ? (
+        <div style={{ marginBottom: 12 }}>
+          <Banner tone="success">
+            <p>{reviewRewardsInfo}</p>
+          </Banner>
+        </div>
+      ) : null}
+
+      <PaginatedTable
+        columns={[
+          "Source",
+          "Reference",
+          "Customer",
+          "Product",
+          "Comment",
+          "Approved",
+          "Rewarded",
+          "Actions",
+        ]}
+        rows={reviewRewardsRows.map((row) => [
+          row.sourceApp || "-",
+          row.reviewReference || "-",
+          row.customerName || row.customerEmail || row.customerId || "-",
+          row.productId || "-",
+          row.reviewText || "-",
+          row.approved ? "Yes" : "No",
+          row.rewarded ? `Yes${row.rewardPoints ? ` (${Number(row.rewardPoints).toFixed(2)})` : ""}` : "No",
+          <div key={`review-actions-${row.id}`} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button size="slim" onClick={() => toggleReviewApproved(row)}>
+              {row.approved ? "Mark Pending" : "Mark Approved"}
+            </Button>
+            <Button
+              size="slim"
+              variant="primary"
+              disabled={!row.approved || row.rewarded || (!row.customerId && !row.customerEmail)}
+              onClick={() => awardReviewFromEntry(row)}
+            >
+              Award Points
+            </Button>
+          </div>,
+        ])}
+        page={reviewRewardsPage}
+        setPage={setReviewRewardsPage}
+        perPage={reviewRewardsPerPage}
+        setPerPage={setReviewRewardsPerPage}
+        emptyLabel={reviewRewardsLoading ? "Loading review rewards..." : "No review entries found"}
+      />
+
+      <Modal
+        open={isReviewEntryModalOpen}
+        onClose={() => {
+          if (isReviewEntrySaving) return;
+          setIsReviewEntryModalOpen(false);
+        }}
+        title="Add review entry"
+        primaryAction={{
+          content: isReviewEntrySaving ? "Saving..." : "Save Review Entry",
+          onAction: saveReviewEntry,
+          loading: isReviewEntrySaving,
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: () => {
+              if (isReviewEntrySaving) return;
+              setIsReviewEntryModalOpen(false);
+            },
+          },
+        ]}
+      >
+        <Modal.Section>
+          <FormLayout>
+            <Select
+              label="Source App"
+              options={reviewSourceOptions.filter((option) => option.value !== "all")}
+              value={reviewEntryForm.sourceApp}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({ ...prev, sourceApp: value }))
+              }
+            />
+            <Select
+              label="Saved Customer"
+              options={[
+                { label: "Select saved customer", value: "" },
+                ...customersRows.map((row) => ({
+                  label: `${row.name || "Unnamed Customer"}${row.email ? ` (${row.email})` : ""}`,
+                  value: String(row.id || ""),
+                })),
+              ]}
+              value={reviewEntryForm.customerId}
+              onChange={handleReviewEntryCustomerChange}
+            />
+            <TextField
+              label="Customer ID"
+              value={reviewEntryForm.customerId}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({ ...prev, customerId: value }))
+              }
+              autoComplete="off"
+            />
+            <TextField
+              label="Customer Name"
+              value={reviewEntryForm.customerName}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({ ...prev, customerName: value }))
+              }
+              autoComplete="off"
+            />
+            <TextField
+              label="Customer Email"
+              value={reviewEntryForm.customerEmail}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({ ...prev, customerEmail: value }))
+              }
+              autoComplete="off"
+            />
+            <TextField
+              label="Review Reference"
+              value={reviewEntryForm.reviewReference}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({ ...prev, reviewReference: value }))
+              }
+              autoComplete="off"
+              helpText="Use the review id, URL, or any unique source reference."
+            />
+            <TextField
+              label="Product ID"
+              value={reviewEntryForm.productId}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({ ...prev, productId: value }))
+              }
+              autoComplete="off"
+            />
+            <TextField
+              label="Review Comment"
+              value={reviewEntryForm.reviewText}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({ ...prev, reviewText: value }))
+              }
+              autoComplete="off"
+              multiline={4}
+            />
+            <Select
+              label="Review Status"
+              options={[
+                { label: "Pending", value: "pending" },
+                { label: "Approved", value: "approved" },
+                { label: "Published", value: "published" },
+              ]}
+              value={reviewEntryForm.reviewStatus}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({
+                  ...prev,
+                  reviewStatus: value,
+                  approved: value === "approved" || value === "published",
+                }))
+              }
+            />
+            <TextField
+              label="Admin Notes"
+              value={reviewEntryForm.adminNotes}
+              onChange={(value) =>
+                setReviewEntryForm((prev) => ({ ...prev, adminNotes: value }))
+              }
+              autoComplete="off"
+              multiline={3}
+            />
+          </FormLayout>
         </Modal.Section>
       </Modal>
     </LegacyCard>
@@ -3191,6 +3023,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
   const panels = [
     customersPanel,
+    reviewsPanel,
     eventsPanel,
     itemsPanel,
     giftcardPanel,
