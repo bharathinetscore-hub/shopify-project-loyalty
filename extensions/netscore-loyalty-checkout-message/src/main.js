@@ -465,13 +465,13 @@ function CheckoutLoyaltyMessage({ runtimeApi }) {
           h("s-text", null, `Points Available: ${availablePoints.toFixed(2)}`),
           h("s-text", null, `Max Amount: $${maxAmount.toFixed(2)}`)
         ),
-        h("s-text", null, `Order Amount that You Could Redeem: $${orderRedeemAmount.toFixed(2)}`),
+        // h("s-text", null, `Order Amount that You Could Redeem: $${orderRedeemAmount.toFixed(2)}`),
         h("s-text", null, `Checkout Total: $${checkoutTotalAmount.toFixed(2)}`),
         h("s-text", null, `Checkout Total After Loyalty: $${checkoutTotalAfterRedeem.toFixed(2)}`),
         h(
           "s-text",
           null,
-          `Minimum required available points: ${minimumRequiredPoints.toFixed(2)}`
+          // `Minimum required available points: ${minimumRequiredPoints.toFixed(2)}`
         ),
         h(
           "s-stack",
