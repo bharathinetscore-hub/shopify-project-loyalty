@@ -475,22 +475,26 @@ function CheckoutLoyaltyMessage({ runtimeApi }) {
         ),
         h(
           "s-stack",
-          { direction: "inline", gap: "tight", alignItems: "center" },
+          { direction: "inline", gap: "base", alignItems: "center" },
           h("s-checkbox", { checked: useAllPoints, onChange: handleToggleUseAll }),
-          h("s-text", { type: "strong" }, "Use all available Loyalty Points")
+          h("s-text", null, "Use all available Loyalty Points")
         ),
         h(
           "s-stack",
-          { direction: "inline", gap: "tight", alignItems: "center" },
-          h("s-text", { type: "strong" }, "Apply Points:"),
-          h("s-text-field", {
-            type: "number",
-            value: applyPointsInput,
-            min: "0",
-            max: String(Math.floor(availablePoints)),
-            step: "1",
-            onInput: (event) => setApplyPointsInput(event?.currentTarget?.value || ""),
-          }),
+          { direction: "block", gap: "tight" },
+          h("s-text", { type: "strong" }, "Apply Points"),
+          h(
+            "s-box",
+            { maxInlineSize: "180px" },
+            h("s-text-field", {
+              type: "number",
+              value: applyPointsInput,
+              min: "0",
+              max: String(Math.floor(availablePoints)),
+              step: "1",
+              onInput: (event) => setApplyPointsInput(event?.currentTarget?.value || ""),
+            })
+          ),
           h(
             "s-text",
             { tone: "subdued" },
@@ -499,9 +503,29 @@ function CheckoutLoyaltyMessage({ runtimeApi }) {
         ),
         h(
           "s-stack",
-          { direction: "inline", gap: "tight" },
-          h("s-button", { variant: "primary", onClick: handleApplyPoints, disabled: applyBusy }, applyBusy ? "Applying..." : "Apply"),
-          h("s-button", { tone: "critical", onClick: handleRemovePoints, disabled: applyBusy || (!appliedPoints && !appliedPriceRuleId) }, "Remove")
+          { direction: "inline", gap: "base" },
+          h(
+            "s-box",
+            { maxInlineSize: "96px" },
+            h(
+              "s-button",
+              { variant: "primary", onClick: handleApplyPoints, disabled: applyBusy, size: "small" },
+              applyBusy ? "Applying..." : "Apply"
+            )
+          ),
+          h(
+            "s-box",
+            { maxInlineSize: "110px" },
+            h(
+              "s-button",
+              {
+                onClick: handleRemovePoints,
+                disabled: applyBusy || (!appliedPoints && !appliedPriceRuleId),
+                size: "small",
+              },
+              "Remove"
+            )
+          )
         ),
         appliedPoints > 0
           ? h(
