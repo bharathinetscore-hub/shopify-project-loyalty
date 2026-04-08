@@ -228,6 +228,14 @@ const ui = {
     background: "linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%)",
     boxShadow: "0 10px 22px rgba(15, 23, 42, 0.05)",
   },
+  labelGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 16,
+  },
+  labelGridFull: {
+    gridColumn: "1 / -1",
+  },
   saveRow: {
     display: "flex",
     justifyContent: "flex-end",
@@ -472,9 +480,9 @@ export default function LoyaltyFeaturesPage() {
           </div>
 
           <FormLayout>
-            <FormLayout.Group>
+            <div className="loyalty-features-label-grid" style={ui.labelGrid}>
               <TextField
-                label="Loyalty points earned"
+                label="Loyalty Points Earned"
                 autoComplete="off"
                 value={featuresConfig.loyaltyPointsEarnedLabel}
                 onChange={(value) =>
@@ -482,54 +490,48 @@ export default function LoyaltyFeaturesPage() {
                 }
               />
               <TextField
-                label="Redeem history"
+                label="Redeem History"
                 autoComplete="off"
                 value={featuresConfig.redeemHistoryLabel}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, redeemHistoryLabel: value }))}
               />
-            </FormLayout.Group>
 
-            <FormLayout.Group>
-              <TextField
-                label="My account tab heading"
+              <div style={ui.labelGridFull}>
+                <TextField
+                label="My Account Tab Heading"
                 autoComplete="off"
                 value={featuresConfig.myAccountTabHeading}
                 onChange={(value) =>
                   setFeaturesConfig((prev) => ({ ...prev, myAccountTabHeading: value }))
                 }
               />
-              <div />
-            </FormLayout.Group>
-
-            <FormLayout.Group>
+              </div>
               <TextField
-                label="Gift card"
+                label="Gift Card"
                 autoComplete="off"
                 value={featuresConfig.giftCardLabel}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, giftCardLabel: value }))}
               />
               <TextField
-                label="Refer friend"
+                label="Refer Friend"
                 autoComplete="off"
                 value={featuresConfig.referFriendLabel}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, referFriendLabel: value }))}
               />
-            </FormLayout.Group>
 
-            <FormLayout.Group>
               <TextField
-                label="Update profile"
+                label="Update Profile"
                 autoComplete="off"
                 value={featuresConfig.updateProfileLabel}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, updateProfileLabel: value }))}
               />
               <TextField
-                label="Tiers"
+                label="Loyalty Tiers"
                 autoComplete="off"
                 value={featuresConfig.tiersLabel}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, tiersLabel: value }))}
               />
-            </FormLayout.Group>
+            </div>
 
             <div style={ui.saveRow}>
               <Button variant="primary" onClick={saveFeaturesConfig}>Save</Button>
@@ -580,6 +582,12 @@ export default function LoyaltyFeaturesPage() {
         @media (max-width: 900px) {
           .Polaris-Page {
             max-width: 100%;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .loyalty-features-label-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
