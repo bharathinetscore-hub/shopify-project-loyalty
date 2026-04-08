@@ -283,82 +283,18 @@ function Extension() {
     return <s-text>Loading product...</s-text>;
   }
 
-  if (licenseExpired) {
-    return (
-      <s-admin-block heading="Loyalty Rewards Settings">
-        <s-stack direction="block" gap="base">
-          <s-button variant="primary" onClick={openItemsTab}>
-            Open Items Tab
-          </s-button>
-          {DEBUG && (
-            <s-text>
-              Debug - {licenseMessage || "License expired"}
-            </s-text>
-          )}
-        </s-stack>
-      </s-admin-block>
-    );
-  }
-
   return (
     <s-admin-block heading="Loyalty Rewards Settings">
       <s-stack direction="block" gap="base">
-        {DEBUG && (
-          <s-text>
-            Debug - session planEnd: {String(userMeta?.planEnd || "N/A")} | API planEnd:{" "}
-            {String(planEndFromApi || "N/A")} | API expired: {expiredFromApi}
-          </s-text>
-        )}
+        <s-text>
+          Open the products tab to view and manage loyalty  product.
+        </s-text>
 
-        <s-checkbox
-          label="Enable Loyalty Rewards for this product"
-          checked={enableLoyalty}
-          onChange={(e) => setEnableLoyalty(e.target.checked)}
-        />
-
-        {enableLoyalty && (
-          <s-checkbox
-            label="Enable Collection Type"
-            checked={enableCollection}
-            onChange={(e) => setEnableCollection(e.target.checked)}
-          />
-        )}
-
-        {enableLoyalty && enableCollection && (
-          <s-select
-            label="Collection Type"
-            value={collectionType}
-            onChange={(e) => setCollectionType(e.target.value)}
-          >
-            <s-option value="">Select</s-option>
-            <s-option value="points">Points</s-option>
-            <s-option value="amount">Amount</s-option>
-          </s-select>
-        )}
-
-        {enableLoyalty && enableCollection && collectionType === "points" && (
-          <s-text-field
-            label="Points Value"
-            value={pointsValue}
-            onChange={(e) => setPointsValue(e.target.value)}
-          />
-        )}
-
-        {enableLoyalty && enableCollection && collectionType === "amount" && (
-          <s-text-field
-            label="SKU Multiplier"
-            value={skuMultiplier}
-            onChange={(e) => setSkuMultiplier(e.target.value)}
-          />
-        )}
-
-        {status && <s-text>{status}</s-text>}
-
-        {enableLoyalty && (
-          <s-button variant="primary" disabled={loading} onClick={save}>
-            {loading ? "Saving..." : "Save"}
+        <s-box>
+          <s-button variant="primary" onClick={openItemsTab}>
+            Open Items Tab
           </s-button>
-        )}
+        </s-box>
 
         {DEBUG && (
           <s-text>
