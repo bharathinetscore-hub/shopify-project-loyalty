@@ -93,7 +93,7 @@ const ui = {
   headerCard: {
     marginBottom: 16,
     padding: "20px 22px",
-    borderRadius: 20,
+    borderRadius: 19,
     border: "1px solid #dfe7ef",
     background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,249,0.98) 100%)",
     boxShadow: "0 12px 26px rgba(15, 23, 42, 0.06)",
