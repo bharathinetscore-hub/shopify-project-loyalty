@@ -566,6 +566,7 @@ export default async function handler(req, res) {
         enable_gift_certificate_generation,
         enable_tiers_info,
         enable_profile_info,
+        enable_points_redeem_on_checkout,
         my_account_tab_heading,
         loyalty_points_earned_label,
         redeem_history_label,
@@ -590,6 +591,7 @@ export default async function handler(req, res) {
     );
     const tiersInfoEnabled = Boolean(features?.enable_tiers_info);
     const profileInfoEnabled = Boolean(features?.enable_profile_info);
+    const pointsRedeemOnCheckoutEnabled = Boolean(features?.enable_points_redeem_on_checkout);
     await ensureCustomerReferralCode({
       customerIdRaw,
       customerIdParsed,
@@ -647,6 +649,7 @@ export default async function handler(req, res) {
       giftCertificateGenerationEnabled,
       tiersInfoEnabled,
       profileInfoEnabled,
+      pointsRedeemOnCheckoutEnabled,
       customerLookup: {
         inputCustomerIdRaw: customerIdRaw,
         inputCustomerIdParsed: customerIdParsed,

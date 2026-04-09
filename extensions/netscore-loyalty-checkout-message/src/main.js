@@ -134,6 +134,7 @@ function CheckoutLoyaltyMessage({ runtimeApi }) {
   const [minimumRequiredPoints, setMinimumRequiredPoints] = useState(0);
   const [eachPointValue, setEachPointValue] = useState(1);
   const [loyaltyPointValue, setLoyaltyPointValue] = useState(1);
+  const [canShowCheckoutRedeemSection, setCanShowCheckoutRedeemSection] = useState(false);
 
   const [useAllPoints, setUseAllPoints] = useState(false);
   const [applyPointsInput, setApplyPointsInput] = useState("0");
@@ -172,15 +173,21 @@ function CheckoutLoyaltyMessage({ runtimeApi }) {
         const minimum = toNumber(data?.giftCardConfig?.minimumRedemptionPoints, 0);
         const eachVal = toNumber(data?.giftCardConfig?.eachPointValue, 1);
         const loyaltyVal = toNumber(data?.giftCardConfig?.loyaltyPointValue, 1);
+        const shouldShowSection =
+          Boolean(data?.customerEligible) &&
+          Boolean(data?.globalLoyaltyEnabled) &&
+          Boolean(data?.pointsRedeemOnCheckoutEnabled);
 
         setAvailablePoints(points);
         setMinimumRequiredPoints(minimum);
         setEachPointValue(eachVal > 0 ? eachVal : 1);
         setLoyaltyPointValue(loyaltyVal > 0 ? loyaltyVal : 1);
+        setCanShowCheckoutRedeemSection(shouldShowSection);
         setApplyPointsInput(String(points > 0 ? Math.min(points, 1) : 0));
       } catch {
         if (!cancelled) {
           setErrorText("Failed to load loyalty points.");
+          setCanShowCheckoutRedeemSection(false);
         }
       } finally {
         if (!cancelled) {
@@ -441,6 +448,10 @@ function CheckoutLoyaltyMessage({ runtimeApi }) {
 
   if (loading) {
     return h("s-text", null, "Loading loyalty checkout section...");
+  }
+
+  if (!canShowCheckoutRedeemSection) {
+    return null;
   }
 
   return h(
