@@ -292,7 +292,7 @@ function Extension() {
 
         <s-box>
           <s-button variant="primary" onClick={openItemsTab}>
-            Open Items Tab
+            Open Products
           </s-button>
         </s-box>
 

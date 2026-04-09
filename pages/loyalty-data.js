@@ -2791,7 +2791,8 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           page={loyaltyProductsPage}
           setPage={setLoyaltyProductsPage}
           perPage={loyaltyProductsPerPage}
-          setPerPage={setLoyaltyProductsPerPage}
+          setPerPage={null}
+          // setPerPage={setLoyaltyProductsPerPage}
         />
       </LegacyCard>
 
