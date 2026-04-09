@@ -316,7 +316,6 @@ async function sendGiftCardEmail({ receiverEmail, giftCode, giftAmount, expiryDa
     giftAmount: formattedAmount,
     expiryDate: cleanText(expiryDate),
     expiryTextLine: expiryDate ? `Expires: ${cleanText(expiryDate)}` : "",
-    expiryHtmlLine: expiryDate ? `<p><strong>Expires:</strong> ${cleanText(expiryDate)}</p>` : "",
   });
 
   try {

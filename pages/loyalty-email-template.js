@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Page, LegacyCard, FormLayout, TextField, Button, Banner } from "@shopify/polaris";
+import { Page, LegacyCard, FormLayout, TextField, Button, Banner, Tabs } from "@shopify/polaris";
 import { EMAIL_TEMPLATE_KEYS } from "../lib/email-template-definitions";
 
 const TEMPLATE_ORDER = [EMAIL_TEMPLATE_KEYS.REFER_FRIEND, EMAIL_TEMPLATE_KEYS.GIFT_CARD];
@@ -105,6 +105,7 @@ export default function LoyaltyEmailTemplatePage() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState({ tone: "success", message: "" });
   const [templates, setTemplates] = useState({});
+  const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("lmpUser") || localStorage.getItem("lmpUser");
@@ -233,14 +234,25 @@ export default function LoyaltyEmailTemplatePage() {
             </div>
           ) : null}
 
-          <div style={ui.templateStack}>
-            {TEMPLATE_ORDER.map((templateKey) => {
-              const template = templates?.[templateKey] || {};
-              const meta = TEMPLATE_LABELS[templateKey];
-              const placeholders = Array.isArray(template.placeholders) ? template.placeholders : [];
+          <Tabs
+            tabs={TEMPLATE_ORDER.map((templateKey) => ({
+              id: templateKey,
+              content: TEMPLATE_LABELS[templateKey].title,
+              panelID: `${templateKey}-panel`,
+            }))}
+            selected={activeTab}
+            onSelect={setActiveTab}
+          />
 
-              return (
-                <div key={templateKey} style={{ border: "1px solid #dbe8f8", borderRadius: 18, padding: 16 }}>
+          {(() => {
+            const templateKey = TEMPLATE_ORDER[activeTab] || TEMPLATE_ORDER[0];
+            const template = templates?.[templateKey] || {};
+            const meta = TEMPLATE_LABELS[templateKey];
+            const placeholders = Array.isArray(template.placeholders) ? template.placeholders : [];
+
+            return (
+              <div style={{ ...ui.templateStack, marginTop: 16 }}>
+                <div style={{ border: "1px solid #dbe8f8", borderRadius: 18, padding: 16 }}>
                   <h2 style={ui.cardTitle}>{meta.title}</h2>
                   <p style={ui.cardSub}>{meta.description}</p>
 
@@ -254,37 +266,24 @@ export default function LoyaltyEmailTemplatePage() {
 
                   <FormLayout>
                     <TextField
-                      label="Template Name"
-                      autoComplete="off"
-                      value={template.templateName || meta.title}
-                      onChange={(value) => updateTemplate(templateKey, "templateName", value)}
-                    />
-                    <TextField
                       label="Subject"
                       autoComplete="off"
                       value={template.subject || ""}
                       onChange={(value) => updateTemplate(templateKey, "subject", value)}
                     />
                     <TextField
-                      label="Plain Text Body"
-                      autoComplete="off"
-                      multiline={8}
-                      value={template.textBody || ""}
-                      onChange={(value) => updateTemplate(templateKey, "textBody", value)}
-                    />
-                    <TextField
-                      label="HTML Body"
+                      label="Body"
                       autoComplete="off"
                       multiline={10}
-                      value={template.htmlBody || ""}
-                      onChange={(value) => updateTemplate(templateKey, "htmlBody", value)}
-                      helpText="Use HTML here if you want formatted emails."
+                      value={template.textBody || ""}
+                      onChange={(value) => updateTemplate(templateKey, "textBody", value)}
+                      helpText="Plain text body is enough. Line breaks will be preserved in the email."
                     />
                   </FormLayout>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })()}
 
           <div style={ui.saveRow}>
             <Button variant="primary" onClick={saveTemplates} loading={saving}>
@@ -303,6 +302,14 @@ export default function LoyaltyEmailTemplatePage() {
             border: 1px solid #dce7f4;
             box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
             background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+          }
+
+          .Polaris-Tabs__TabList {
+            margin-bottom: 4px;
+          }
+
+          .Polaris-Tabs__Tab {
+            border-radius: 10px;
           }
 
           .Polaris-TextField {
