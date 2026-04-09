@@ -479,6 +479,15 @@ export default function LoyaltyFeaturesPage() {
           <FormLayout>
             <div className="loyalty-features-label-grid" style={ui.labelGrid}>
               <TextField
+                label="My Account Tab Heading"
+                autoComplete="off"
+                value={featuresConfig.myAccountTabHeading}
+                onChange={(value) =>
+                  setFeaturesConfig((prev) => ({ ...prev, myAccountTabHeading: value }))
+                }
+              />
+
+              <TextField
                 label="Loyalty Points Earned"
                 autoComplete="off"
                 value={featuresConfig.loyaltyPointsEarnedLabel}
@@ -493,14 +502,6 @@ export default function LoyaltyFeaturesPage() {
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, redeemHistoryLabel: value }))}
               />
 
-              <TextField
-                label="My Account Tab Heading"
-                autoComplete="off"
-                value={featuresConfig.myAccountTabHeading}
-                onChange={(value) =>
-                  setFeaturesConfig((prev) => ({ ...prev, myAccountTabHeading: value }))
-                }
-              />
               <TextField
                 label="Gift Card"
                 autoComplete="off"
