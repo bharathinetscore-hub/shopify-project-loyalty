@@ -233,9 +233,6 @@ const ui = {
     gridTemplateColumns: "1fr 1fr",
     gap: 16,
   },
-  labelGridFull: {
-    gridColumn: "1 / -1",
-  },
   saveRow: {
     display: "flex",
     justifyContent: "flex-end",
@@ -496,8 +493,7 @@ export default function LoyaltyFeaturesPage() {
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, redeemHistoryLabel: value }))}
               />
 
-              <div style={ui.labelGridFull}>
-                <TextField
+              <TextField
                 label="My Account Tab Heading"
                 autoComplete="off"
                 value={featuresConfig.myAccountTabHeading}
@@ -505,7 +501,6 @@ export default function LoyaltyFeaturesPage() {
                   setFeaturesConfig((prev) => ({ ...prev, myAccountTabHeading: value }))
                 }
               />
-              </div>
               <TextField
                 label="Gift Card"
                 autoComplete="off"
