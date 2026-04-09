@@ -2147,7 +2147,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           setViewingCustomerEvents([]);
           setViewingCustomerEventsError("");
         }}
-        large
+        size="large"
         title="Customer event details"
         primaryAction={{
           content: "Download CSV",
