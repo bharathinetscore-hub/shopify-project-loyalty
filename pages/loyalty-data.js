@@ -1506,7 +1506,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   useEffect(() => {
     if (user) {
       loadSavedCustomers();
-      loadReviewRewards();
       loadEnabledItems();
       loadItemsTab();
       loadEvents();
