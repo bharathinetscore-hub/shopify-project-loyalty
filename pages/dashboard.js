@@ -408,7 +408,7 @@ export default function Dashboard() {
     const path = window.location.pathname;
     const searchTab = new URLSearchParams(window.location.search).get("tab");
 
-    if (searchTab === "customers" || searchTab === "events" || searchTab === "items" || searchTab === "giftcard-generated" || searchTab === "loyalty-config") {
+    if (searchTab === "customers" || searchTab === "events" || searchTab === "items" || searchTab === "giftcard-generated" || searchTab === "loyalty-config" || searchTab === "email-template") {
       setIsLoyaltyRoute(true);
       setRouteReady(true);
       return;
@@ -445,6 +445,12 @@ export default function Dashboard() {
     }
 
     if (path.includes("/loyalty-config")) {
+      setIsLoyaltyRoute(true);
+      setRouteReady(true);
+      return;
+    }
+
+    if (path.includes("/loyalty-email-template")) {
       setIsLoyaltyRoute(true);
       setRouteReady(true);
       return;

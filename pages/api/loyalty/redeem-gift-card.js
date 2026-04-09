@@ -1,6 +1,7 @@
 import pool from "../../../db/db";
 import cors from "../../../lib/cors";
 import nodemailer from "nodemailer";
+import { EMAIL_TEMPLATE_KEYS, resolveEmailTemplate } from "../../../lib/email-templates";
 const { getShopAccessToken } = require("../../../lib/shopify-token-store");
 
 function cleanText(value) {
@@ -310,39 +311,21 @@ async function sendGiftCardEmail({ receiverEmail, giftCode, giftAmount, expiryDa
   });
 
   const formattedAmount = `$${toNumber(giftAmount, 0).toFixed(2)}`;
-  const expiryLine = expiryDate ? `<p><strong>Expires:</strong> ${cleanText(expiryDate)}</p>` : "";
+  const template = await resolveEmailTemplate(EMAIL_TEMPLATE_KEYS.GIFT_CARD, {
+    giftCode,
+    giftAmount: formattedAmount,
+    expiryDate: cleanText(expiryDate),
+    expiryTextLine: expiryDate ? `Expires: ${cleanText(expiryDate)}` : "",
+    expiryHtmlLine: expiryDate ? `<p><strong>Expires:</strong> ${cleanText(expiryDate)}</p>` : "",
+  });
 
   try {
     await transporter.sendMail({
       from: `"${config.fromName}" <${config.fromEmail}>`,
       to: receiverEmail,
-      subject: "Your Loyalty Gift Card Coupon Code",
-      text: [
-        "Hello,",
-        "",
-        "You've received a Loyalty Gift Card!",
-        "",
-        `Coupon Code: ${giftCode}`,
-        `Amount: ${formattedAmount}`,
-        expiryDate ? `Expires: ${cleanText(expiryDate)}` : "",
-        "",
-        "Use it at checkout to redeem your discount.",
-        "",
-        "Thank you!",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      html: `
-        <div style="font-family: Arial, sans-serif; font-size: 16px; color: #1f2937;">
-          <p>Hello,</p>
-          <p>You've received a Loyalty Gift Card!</p>
-          <p><strong>Coupon Code:</strong> ${giftCode}</p>
-          <p><strong>Amount:</strong> ${formattedAmount}</p>
-          ${expiryLine}
-          <p>Use it at checkout to redeem your discount.</p>
-          <p>Thank you!</p>
-        </div>
-      `,
+      subject: template.subject,
+      text: template.text,
+      html: template.html,
     });
 
     return { sent: true, error: "" };

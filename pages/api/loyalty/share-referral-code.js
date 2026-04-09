@@ -1,6 +1,7 @@
 import cors from "../../../lib/cors";
 import nodemailer from "nodemailer";
 import pool from "../../../db/db";
+import { EMAIL_TEMPLATE_KEYS, resolveEmailTemplate } from "../../../lib/email-templates";
 
 function cleanText(value) {
   return String(value || "").trim();
@@ -165,30 +166,17 @@ async function sendReferralCodeEmail({ receiverEmail, customerName, referralCode
   });
 
   try {
+    const template = await resolveEmailTemplate(EMAIL_TEMPLATE_KEYS.REFER_FRIEND, {
+      customerName: cleanText(customerName) || "A friend",
+      referralCode,
+    });
+
     await transporter.sendMail({
       from: `"${config.fromName}" <${config.fromEmail}>`,
       to: receiverEmail,
-      subject: "Your referral code from NetScore Loyalty Rewards",
-      text: [
-        "Hello,",
-        "",
-        `${cleanText(customerName) || "A friend"} has shared a referral code with you.`,
-        "",
-        `Referral Code: ${referralCode}`,
-        "",
-        "Use this code during signup to enjoy loyalty rewards.",
-        "",
-        "Thank you!",
-      ].join("\n"),
-      html: `
-        <div style="font-family: Arial, sans-serif; font-size: 16px; color: #1f2937;">
-          <p>Hello,</p>
-          <p><strong>${cleanText(customerName) || "A friend"}</strong> has shared a referral code with you.</p>
-          <p><strong>Referral Code:</strong> ${referralCode}</p>
-          <p>Use this code during signup to enjoy loyalty rewards.</p>
-          <p>Thank you!</p>
-        </div>
-      `,
+      subject: template.subject,
+      text: template.text,
+      html: template.html,
     });
 
     return { sent: true, error: "" };

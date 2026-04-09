@@ -90,6 +90,7 @@ function MyApp({ Component, pageProps }) {
         // AppLink.create(app, { label: "Items", destination: "/loyalty-items" }),
         AppLink.create(app, { label: "Giftcard Generated", destination: "/loyalty-giftcard-generated" }),
         AppLink.create(app, { label: "Features", destination: "/loyalty-features" }),
+        AppLink.create(app, { label: "Email Template", destination: "/loyalty-email-template" }),
       ];
       NavigationMenu.create(app, { items });
     } catch (err) {
