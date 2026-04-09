@@ -327,29 +327,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   const [viewingCustomerEvents, setViewingCustomerEvents] = useState([]);
   const [viewingCustomerEventsLoading, setViewingCustomerEventsLoading] = useState(false);
   const [viewingCustomerEventsError, setViewingCustomerEventsError] = useState("");
-  const [reviewRewardsRows, setReviewRewardsRows] = useState([]);
-  const [reviewRewardsLoading, setReviewRewardsLoading] = useState(false);
-  const [reviewRewardsError, setReviewRewardsError] = useState("");
-  const [reviewRewardsInfo, setReviewRewardsInfo] = useState("");
-  const [reviewRewardsSearch, setReviewRewardsSearch] = useState("");
-  const [reviewRewardsSource, setReviewRewardsSource] = useState("all");
-  const [reviewRewardsStatus, setReviewRewardsStatus] = useState("all");
-  const [reviewRewardsPage, setReviewRewardsPage] = useState(1);
-  const [reviewRewardsPerPage, setReviewRewardsPerPage] = useState(10);
-  const [isReviewEntryModalOpen, setIsReviewEntryModalOpen] = useState(false);
-  const [isReviewEntrySaving, setIsReviewEntrySaving] = useState(false);
-  const [reviewEntryForm, setReviewEntryForm] = useState({
-    sourceApp: "manual",
-    customerId: "",
-    customerName: "",
-    customerEmail: "",
-    productId: "",
-    reviewReference: "",
-    reviewText: "",
-    reviewStatus: "pending",
-    approved: false,
-    adminNotes: "",
-  });
 
   const [customersPage, setCustomersPage] = useState(1);
   const [eventsPage, setEventsPage] = useState(1);
@@ -363,23 +340,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   const [giftcardsPerPage, setGiftcardsPerPage] = useState(10);
   const [enabledItemsPerPage, setEnabledItemsPerPage] = useState(10);
   const [loyaltyProductsPerPage, setLoyaltyProductsPerPage] = useState(10);
-
-  const reviewSourceOptions = [
-    { label: "All sources", value: "all" },
-    { label: "Manual", value: "manual" },
-    { label: "Judge.me", value: "judgeme" },
-    { label: "Loox", value: "loox" },
-    { label: "Shopify Product Reviews", value: "shopify-product-reviews" },
-    { label: "Other", value: "other" },
-  ];
-
-  const reviewStatusOptions = [
-    { label: "All statuses", value: "all" },
-    { label: "Approved", value: "approved" },
-    { label: "Pending approval", value: "pending" },
-    { label: "Rewarded", value: "rewarded" },
-    { label: "Not rewarded", value: "unrewarded" },
-  ];
 
   function getEmbeddedQueryString(extraParams = {}) {
     if (typeof window === "undefined") return "";
@@ -576,16 +536,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     return () => window.clearTimeout(timeoutId);
   }, [customersInfo]);
 
-  useEffect(() => {
-    if (!reviewRewardsInfo) return undefined;
-
-    const timeoutId = window.setTimeout(() => {
-      setReviewRewardsInfo("");
-    }, 15000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [reviewRewardsInfo]);
-
   /* ---------------- License Check ---------------- */
 
   const planEnd = useMemo(() => {
@@ -604,7 +554,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
   const tabs = [
     { id: "customers", content: "Customers" },
-    { id: "reviews", content: "Reviews" },
     { id: "events", content: "Events" },
     { id: "items", content: "Items" },
     { id: "giftcards", content: "Giftcards" },
@@ -613,7 +562,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
   const tabRoutes = [
     "/loyalty-customers",
-    "/loyalty-reviews",
     "/loyalty-events",
     "/loyalty-items",
     "/loyalty-giftcard-generated",
@@ -626,23 +574,19 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       const searchTab = new URLSearchParams(window.location.search).get("tab");
 
       if (searchTab === "events") {
-        setActiveTab(2);
+        setActiveTab(1);
         return;
       }
       if (searchTab === "items") {
-        setActiveTab(3);
+        setActiveTab(2);
         return;
       }
       if (searchTab === "giftcard-generated") {
-        setActiveTab(4);
+        setActiveTab(3);
         return;
       }
       if (searchTab === "loyalty-config") {
-        setActiveTab(5);
-        return;
-      }
-      if (searchTab === "reviews") {
-        setActiveTab(1);
+        setActiveTab(4);
         return;
       }
       if (searchTab === "customers") {
@@ -651,26 +595,23 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       }
 
       if (forcedTab) {
-        if (forcedTab === "reviews") setActiveTab(1);
-        else if (forcedTab === "events") setActiveTab(2);
-        else if (forcedTab === "items") setActiveTab(3);
-        else if (forcedTab === "giftcard-generated") setActiveTab(4);
-        else if (forcedTab === "loyalty-config") setActiveTab(5);
+        if (forcedTab === "events") setActiveTab(1);
+        else if (forcedTab === "items") setActiveTab(2);
+        else if (forcedTab === "giftcard-generated") setActiveTab(3);
+        else if (forcedTab === "loyalty-config") setActiveTab(4);
         else setActiveTab(0);
         return;
       }
 
       const path = window.location.pathname;
-      if (path.includes("/loyalty-reviews")) {
+      if (path.includes("/loyalty-events")) {
         setActiveTab(1);
-      } else if (path.includes("/loyalty-events")) {
-        setActiveTab(2);
       } else if (path.includes("/loyalty-items")) {
-        setActiveTab(3);
+        setActiveTab(2);
       } else if (path.includes("/loyalty-giftcard-generated")) {
-        setActiveTab(4);
+        setActiveTab(3);
       } else if (path.includes("/loyalty-config")) {
-        setActiveTab(5);
+        setActiveTab(4);
       } else {
         setActiveTab(0);
       }
@@ -976,32 +917,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     loadCustomerEvents(row);
   }
 
-  function openReviewEntryModal() {
-    setReviewEntryForm({
-      sourceApp: "manual",
-      customerId: "",
-      customerName: "",
-      customerEmail: "",
-      productId: "",
-      reviewReference: "",
-      reviewText: "",
-      reviewStatus: "pending",
-      approved: false,
-      adminNotes: "",
-    });
-    setIsReviewEntryModalOpen(true);
-  }
-
-  function handleReviewEntryCustomerChange(customerId) {
-    const selectedCustomer = customersRows.find((row) => String(row.id) === String(customerId));
-    setReviewEntryForm((prev) => ({
-      ...prev,
-      customerId: String(customerId || ""),
-      customerName: selectedCustomer?.name || prev.customerName || "",
-      customerEmail: selectedCustomer?.email || prev.customerEmail || "",
-    }));
-  }
-
   async function loadCustomerEvents(row) {
     const customerId = String(row?.id || "").trim();
     const email = String(row?.email || "").trim();
@@ -1186,181 +1101,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       setCustomersError(error?.message || "Failed to save customer profile");
     } finally {
       setIsCustomerProfileSaving(false);
-    }
-  }
-
-  async function loadReviewRewards({
-    q = reviewRewardsSearch,
-    source = reviewRewardsSource,
-    status = reviewRewardsStatus,
-  } = {}) {
-    try {
-      setReviewRewardsLoading(true);
-      setReviewRewardsError("");
-
-      const params = new URLSearchParams();
-      if (String(q || "").trim()) params.set("q", String(q).trim());
-      if (source && source !== "all") params.set("source", source);
-      if (status && status !== "all") params.set("status", status);
-
-      const res = await fetch(`/api/loyalty/get-review-rewards?${params.toString()}`);
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || !Array.isArray(data?.reviews)) {
-        throw new Error(data?.error || "Failed to load review rewards");
-      }
-
-      setReviewRewardsRows(data.reviews);
-    } catch (error) {
-      console.error("loadReviewRewards error:", error);
-      setReviewRewardsRows([]);
-      setReviewRewardsError(error?.message || "Failed to load review rewards");
-    } finally {
-      setReviewRewardsLoading(false);
-    }
-  }
-
-  async function saveReviewEntry() {
-    try {
-      if (!String(reviewEntryForm.reviewReference || "").trim()) {
-        setReviewRewardsError("Review reference is required.");
-        return;
-      }
-
-      if (!String(reviewEntryForm.customerId || "").trim() && !String(reviewEntryForm.customerEmail || "").trim()) {
-        setReviewRewardsError("Select a customer or provide customer email.");
-        return;
-      }
-
-      setIsReviewEntrySaving(true);
-      setReviewRewardsError("");
-
-      const res = await fetch("/api/loyalty/save-review-reward", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(reviewEntryForm),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Failed to save review entry");
-      }
-
-      setReviewRewardsInfo("Review entry saved successfully.");
-      setIsReviewEntryModalOpen(false);
-      await loadReviewRewards();
-      setReviewRewardsPage(1);
-    } catch (error) {
-      console.error("saveReviewEntry error:", error);
-      setReviewRewardsError(error?.message || "Failed to save review entry");
-    } finally {
-      setIsReviewEntrySaving(false);
-    }
-  }
-
-  async function toggleReviewApproved(row) {
-    try {
-      setReviewRewardsError("");
-      const nextApproved = !row.approved;
-      const res = await fetch("/api/loyalty/save-review-reward", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          id: row.id,
-          sourceApp: row.sourceApp,
-          reviewReference: row.reviewReference,
-          customerId: row.customerId,
-          customerName: row.customerName,
-          customerEmail: row.customerEmail,
-          productId: row.productId,
-          reviewText: row.reviewText,
-          reviewStatus: nextApproved ? "approved" : "pending",
-          approved: nextApproved,
-          adminNotes: row.adminNotes,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Failed to update review approval");
-      }
-
-      setReviewRewardsRows((prev) =>
-        prev.map((entry) =>
-          entry.id === row.id
-            ? {
-                ...entry,
-                approved: nextApproved,
-                reviewStatus: nextApproved ? "approved" : "pending",
-              }
-            : entry
-        )
-      );
-      setReviewRewardsInfo(nextApproved ? "Review marked as approved." : "Review moved back to pending.");
-    } catch (error) {
-      console.error("toggleReviewApproved error:", error);
-      setReviewRewardsError(error?.message || "Failed to update review approval");
-    }
-  }
-
-  async function awardReviewFromEntry(row) {
-    try {
-      setReviewRewardsError("");
-      const res = await fetch("/api/loyalty/approve-review-reward", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          reviewEntryId: row.id,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Failed to award review points");
-      }
-
-      setReviewRewardsRows((prev) =>
-        prev.map((entry) =>
-          entry.id === row.id
-            ? {
-                ...entry,
-                rewarded: true,
-                rewardEventId: data?.event?.id || 8,
-                rewardEventName: data?.event?.name || entry.rewardEventName,
-                rewardPoints: Number(data?.awardedPoints || 0),
-              }
-            : entry
-        )
-      );
-
-      const savedCustomer = data.customer || {};
-      setCustomersRows((prev) =>
-        prev.map((customer) =>
-          String(customer.id) === String(savedCustomer.id)
-            ? {
-                ...customer,
-                totalEarnedPoints: Number(savedCustomer.totalEarnedPoints || 0),
-                totalRedeemedPoints: Number(savedCustomer.totalRedeemedPoints || 0),
-                availablePoints: Number(savedCustomer.availablePoints || 0),
-              }
-            : customer
-        )
-      );
-
-      setReviewRewardsInfo(data?.message || "Review points awarded successfully.");
-      if (viewingCustomer && String(viewingCustomer.id) === String(savedCustomer.id)) {
-        await loadCustomerEvents(savedCustomer);
-      }
-    } catch (error) {
-      console.error("awardReviewFromEntry error:", error);
-      setReviewRewardsError(error?.message || "Failed to award review points");
     }
   }
 
@@ -1802,19 +1542,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   }, [customersSearch, user]);
 
   useEffect(() => {
-    if (!user) return;
-    const timeoutId = setTimeout(() => {
-      loadReviewRewards({
-        q: reviewRewardsSearch,
-        source: reviewRewardsSource,
-        status: reviewRewardsStatus,
-      });
-      setReviewRewardsPage(1);
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [reviewRewardsSearch, reviewRewardsSource, reviewRewardsStatus, user]);
-
-  useEffect(() => {
     if (!isCustomerPickerOpen) return;
     const timeoutId = setTimeout(() => {
       loadCustomerCandidates({ q: customerCandidatesSearch });
@@ -2210,241 +1937,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
               )}
             </div>
           )}
-        </Modal.Section>
-      </Modal>
-    </LegacyCard>
-  );
-
-  const reviewsPanel = (
-    <LegacyCard sectioned>
-      <h2 style={ui.title}>Review Rewards</h2>
-
-      <div style={ui.sectionHeaderRow}>
-        <div>
-          <p style={ui.sectionSubtitle}>
-            Add reviews from any source, mark them approved, and award loyalty points from one place.
-          </p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={ui.statPill}>
-            {reviewRewardsLoading
-              ? "Loading..."
-              : `${reviewRewardsRows.length} review entr${reviewRewardsRows.length === 1 ? "y" : "ies"}`}
-          </div>
-          <Button variant="primary" onClick={openReviewEntryModal}>
-            Add Review Entry
-          </Button>
-        </div>
-      </div>
-
-      <div style={ui.tools}>
-        <div style={ui.group}>
-          <div style={ui.fieldWrap}>
-            <TextField
-              label="Search review rewards"
-              labelHidden
-              value={reviewRewardsSearch}
-              placeholder="Search by reference, customer, product, or review text"
-              autoComplete="off"
-              onChange={setReviewRewardsSearch}
-            />
-          </div>
-          <div style={ui.fieldSelectWrap}>
-            <Select
-              label="Source app"
-              labelHidden
-              options={reviewSourceOptions}
-              value={reviewRewardsSource}
-              onChange={setReviewRewardsSource}
-            />
-          </div>
-          <div style={ui.fieldSelectWrap}>
-            <Select
-              label="Reward status"
-              labelHidden
-              options={reviewStatusOptions}
-              value={reviewRewardsStatus}
-              onChange={setReviewRewardsStatus}
-            />
-          </div>
-        </div>
-      </div>
-
-      {reviewRewardsError ? (
-        <div style={{ marginBottom: 12 }}>
-          <Banner tone="critical">
-            <p>{reviewRewardsError}</p>
-          </Banner>
-        </div>
-      ) : null}
-      {!reviewRewardsError && reviewRewardsInfo ? (
-        <div style={{ marginBottom: 12 }}>
-          <Banner tone="success">
-            <p>{reviewRewardsInfo}</p>
-          </Banner>
-        </div>
-      ) : null}
-
-      <PaginatedTable
-        columns={[
-          "Source",
-          "Reference",
-          "Customer",
-          "Product",
-          "Comment",
-          "Approved",
-          "Rewarded",
-          "Actions",
-        ]}
-        rows={reviewRewardsRows.map((row) => [
-          row.sourceApp || "-",
-          row.reviewReference || "-",
-          row.customerName || row.customerEmail || row.customerId || "-",
-          row.productId || "-",
-          row.reviewText || "-",
-          row.approved ? "Yes" : "No",
-          row.rewarded ? `Yes${row.rewardPoints ? ` (${Number(row.rewardPoints).toFixed(2)})` : ""}` : "No",
-          <div key={`review-actions-${row.id}`} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Button size="slim" onClick={() => toggleReviewApproved(row)}>
-              {row.approved ? "Mark Pending" : "Mark Approved"}
-            </Button>
-            <Button
-              size="slim"
-              variant="primary"
-              disabled={!row.approved || row.rewarded || (!row.customerId && !row.customerEmail)}
-              onClick={() => awardReviewFromEntry(row)}
-            >
-              Award Points
-            </Button>
-          </div>,
-        ])}
-        page={reviewRewardsPage}
-        setPage={setReviewRewardsPage}
-        perPage={reviewRewardsPerPage}
-        setPerPage={setReviewRewardsPerPage}
-        emptyLabel={reviewRewardsLoading ? "Loading review rewards..." : "No review entries found"}
-      />
-
-      <Modal
-        open={isReviewEntryModalOpen}
-        onClose={() => {
-          if (isReviewEntrySaving) return;
-          setIsReviewEntryModalOpen(false);
-        }}
-        title="Add review entry"
-        primaryAction={{
-          content: isReviewEntrySaving ? "Saving..." : "Save Review Entry",
-          onAction: saveReviewEntry,
-          loading: isReviewEntrySaving,
-        }}
-        secondaryActions={[
-          {
-            content: "Cancel",
-            onAction: () => {
-              if (isReviewEntrySaving) return;
-              setIsReviewEntryModalOpen(false);
-            },
-          },
-        ]}
-      >
-        <Modal.Section>
-          <FormLayout>
-            <Select
-              label="Source App"
-              options={reviewSourceOptions.filter((option) => option.value !== "all")}
-              value={reviewEntryForm.sourceApp}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, sourceApp: value }))
-              }
-            />
-            <Select
-              label="Saved Customer"
-              options={[
-                { label: "Select saved customer", value: "" },
-                ...customersRows.map((row) => ({
-                  label: `${row.name || "Unnamed Customer"}${row.email ? ` (${row.email})` : ""}`,
-                  value: String(row.id || ""),
-                })),
-              ]}
-              value={reviewEntryForm.customerId}
-              onChange={handleReviewEntryCustomerChange}
-            />
-            <TextField
-              label="Customer ID"
-              value={reviewEntryForm.customerId}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, customerId: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Customer Name"
-              value={reviewEntryForm.customerName}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, customerName: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Customer Email"
-              value={reviewEntryForm.customerEmail}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, customerEmail: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Review Reference"
-              value={reviewEntryForm.reviewReference}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, reviewReference: value }))
-              }
-              autoComplete="off"
-              helpText="Use the review id, URL, or any unique source reference."
-            />
-            <TextField
-              label="Product ID"
-              value={reviewEntryForm.productId}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, productId: value }))
-              }
-              autoComplete="off"
-            />
-            <TextField
-              label="Review Comment"
-              value={reviewEntryForm.reviewText}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, reviewText: value }))
-              }
-              autoComplete="off"
-              multiline={4}
-            />
-            <Select
-              label="Review Status"
-              options={[
-                { label: "Pending", value: "pending" },
-                { label: "Approved", value: "approved" },
-                { label: "Published", value: "published" },
-              ]}
-              value={reviewEntryForm.reviewStatus}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({
-                  ...prev,
-                  reviewStatus: value,
-                  approved: value === "approved" || value === "published",
-                }))
-              }
-            />
-            <TextField
-              label="Admin Notes"
-              value={reviewEntryForm.adminNotes}
-              onChange={(value) =>
-                setReviewEntryForm((prev) => ({ ...prev, adminNotes: value }))
-              }
-              autoComplete="off"
-              multiline={3}
-            />
-          </FormLayout>
         </Modal.Section>
       </Modal>
     </LegacyCard>
@@ -3025,7 +2517,6 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
   const panels = [
     customersPanel,
-    reviewsPanel,
     eventsPanel,
     itemsPanel,
     giftcardPanel,

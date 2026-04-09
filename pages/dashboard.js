@@ -312,7 +312,6 @@ export default function Dashboard() {
 
   const [appConfig, setAppConfig] = useState({
     signup: "",
-    review: "",
     referral: "",
     birthday: "",
     anniversary: "",
@@ -409,7 +408,7 @@ export default function Dashboard() {
     const path = window.location.pathname;
     const searchTab = new URLSearchParams(window.location.search).get("tab");
 
-    if (searchTab === "customers" || searchTab === "reviews" || searchTab === "events" || searchTab === "items" || searchTab === "giftcard-generated" || searchTab === "loyalty-config") {
+    if (searchTab === "customers" || searchTab === "events" || searchTab === "items" || searchTab === "giftcard-generated" || searchTab === "loyalty-config") {
       setIsLoyaltyRoute(true);
       setRouteReady(true);
       return;
@@ -440,12 +439,6 @@ export default function Dashboard() {
     }
 
     if (path.includes("/loyalty-customers")) {
-      setIsLoyaltyRoute(true);
-      setRouteReady(true);
-      return;
-    }
-
-    if (path.includes("/loyalty-reviews")) {
       setIsLoyaltyRoute(true);
       setRouteReady(true);
       return;
@@ -537,7 +530,6 @@ export default function Dashboard() {
 
         setAppConfig({
           signup: data.customer_signup_points ?? "",
-          review: data.product_review_points ?? "",
           referral: data.referral_points ?? "",
           birthday: data.birthday_points ?? "",
           anniversary: data.anniversary_points ?? "",
@@ -813,7 +805,7 @@ export default function Dashboard() {
       <FormLayout>
         <FormLayout.Group>
           <TextField label="Signup Points" type="number" autoComplete="off" value={appConfig.signup} onChange={(value) => setAppConfig({ ...appConfig, signup: value })} />
-          <TextField label="Review Points" type="number" autoComplete="off" value={appConfig.review} onChange={(value) => setAppConfig({ ...appConfig, review: value })} />
+          <div />
         </FormLayout.Group>
         <FormLayout.Group>
           <TextField label="Referral Points" type="number" autoComplete="off" value={appConfig.referral} onChange={(value) => setAppConfig({ ...appConfig, referral: value })} />

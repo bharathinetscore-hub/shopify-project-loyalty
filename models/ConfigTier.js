@@ -10,7 +10,6 @@ async function createTables() {
         id SERIAL PRIMARY KEY,
 
         customer_signup_points NUMERIC(10,2),
-        product_review_points NUMERIC(10,2),
         referral_points NUMERIC(10,2),
         birthday_points NUMERIC(10,2),
         anniversary_points NUMERIC(10,2),

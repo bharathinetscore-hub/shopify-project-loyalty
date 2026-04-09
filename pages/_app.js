@@ -87,7 +87,6 @@ function MyApp({ Component, pageProps }) {
         AppLink.create(app, { label: "Products", destination: "/loyalty-config" }),
         AppLink.create(app, { label: "Events", destination: "/loyalty-events" }),
         AppLink.create(app, { label: "Customers ", destination: "/loyalty-customers" }),
-        AppLink.create(app, { label: "Reviews", destination: "/loyalty-reviews" }),
         // AppLink.create(app, { label: "Items", destination: "/loyalty-items" }),
         AppLink.create(app, { label: "Giftcard Generated", destination: "/loyalty-giftcard-generated" }),
         AppLink.create(app, { label: "Features", destination: "/loyalty-features" }),

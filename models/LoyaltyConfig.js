@@ -21,7 +21,6 @@ async function saveConfig(data) {
   const finalData = {
 
     signup: clean(data.signup ?? current.customer_signup_points),
-    review: clean(data.review ?? current.product_review_points),
     referral: clean(data.referral ?? current.referral_points),
     birthday: clean(data.birthday ?? current.birthday_points),
     anniversary: clean(data.anniversary ?? current.anniversary_points),
@@ -51,7 +50,6 @@ async function saveConfig(data) {
       INSERT INTO netst_loyalty_config_table (
 
         customer_signup_points,
-        product_review_points,
         referral_points,
         birthday_points,
         anniversary_points,
@@ -74,11 +72,10 @@ async function saveConfig(data) {
 
       )
       VALUES
-      ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
       `,
       [
         finalData.signup,
-        finalData.review,
         finalData.referral,
         finalData.birthday,
         finalData.anniversary,
@@ -107,31 +104,29 @@ async function saveConfig(data) {
       SET
 
         customer_signup_points = $1,
-        product_review_points = $2,
-        referral_points = $3,
-        birthday_points = $4,
-        anniversary_points = $5,
+        referral_points = $2,
+        birthday_points = $3,
+        anniversary_points = $4,
 
-        each_point_value = $6,
-        loyalty_point_value = $7,
+        each_point_value = $5,
+        loyalty_point_value = $6,
 
-        points_expiration_days = $8,
-        giftcard_expiry_days = $9,
+        points_expiration_days = $7,
+        giftcard_expiry_days = $8,
 
-        netsuite_endpoint_url = $10,
+        netsuite_endpoint_url = $9,
 
-        minimum_redemption_points = $11,
+        minimum_redemption_points = $10,
 
-        email_share_points = $12,
-        facebook_share_points = $13,
+        email_share_points = $11,
+        facebook_share_points = $12,
 
         updated_at = NOW()
 
-      WHERE id = $14
+      WHERE id = $13
       `,
       [
         finalData.signup,
-        finalData.review,
         finalData.referral,
         finalData.birthday,
         finalData.anniversary,
