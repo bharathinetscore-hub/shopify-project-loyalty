@@ -404,6 +404,9 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     Boolean(data?.globalLoyaltyEnabled) &&
     Boolean(data?.customerEligible) &&
     Boolean(data?.profileInfoEnabled);
+  const shouldShowLoyaltyInformation =
+    Boolean(data?.globalLoyaltyEnabled) &&
+    Boolean(data?.customerEligible);
   const enteredGiftCardPoints = cleanText(giftCardPoints) === "" ? NaN : Number(giftCardPoints);
   const calculatedRedeemAmount =
     Number.isFinite(enteredGiftCardPoints) && enteredGiftCardPoints > 0 && eachPointValue > 0
@@ -1184,6 +1187,10 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
         </s-stack>
       </s-box>
     );
+  }
+
+  if (!loading && !error && !shouldShowLoyaltyInformation) {
+    return null;
   }
 
   return (

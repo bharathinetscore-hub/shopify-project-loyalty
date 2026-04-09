@@ -129,8 +129,6 @@ async function generateUniqueReferralCode(customerId, customerName) {
 }
 
 async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, customerEmail, customerName }) {
-  const canonicalCustomerId = cleanText(customerIdParsed) || cleanText(customerIdRaw);
-
   const lookupRes = await pool.query(
     `
       SELECT customer_id, customer_email, customer_referral_code
@@ -157,9 +155,11 @@ async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, cus
   );
 
   const existing = lookupRes.rows[0] || null;
-  const resolvedCustomerId = canonicalCustomerId || cleanText(existing?.customer_id);
+  const resolvedCustomerId = cleanText(existing?.customer_id);
 
-  if (!resolvedCustomerId) {
+  // Do not auto-create customer rows from customer-account/profile access.
+  // Loyalty customers must be inserted explicitly from the admin "Select Shopify Customer" flow.
+  if (!existing || !resolvedCustomerId) {
     return;
   }
 
@@ -174,20 +174,13 @@ async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, cus
 
   await pool.query(
     `
-      INSERT INTO netst_customers_table (
-        customer_id,
-        customer_name,
-        customer_email,
-        customer_referral_code,
-        updated_at
-      )
-      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-      ON CONFLICT (customer_id)
-      DO UPDATE SET
-        customer_name = COALESCE(NULLIF(EXCLUDED.customer_name, ''), netst_customers_table.customer_name),
-        customer_email = COALESCE(NULLIF(EXCLUDED.customer_email, ''), netst_customers_table.customer_email),
-        customer_referral_code = COALESCE(NULLIF(netst_customers_table.customer_referral_code, ''), EXCLUDED.customer_referral_code),
+      UPDATE netst_customers_table
+      SET
+        customer_name = COALESCE(NULLIF($2, ''), customer_name),
+        customer_email = COALESCE(NULLIF($3, ''), customer_email),
+        customer_referral_code = COALESCE(NULLIF(customer_referral_code, ''), $4),
         updated_at = CURRENT_TIMESTAMP
+      WHERE customer_id = $1
     `,
     [
       resolvedCustomerId,

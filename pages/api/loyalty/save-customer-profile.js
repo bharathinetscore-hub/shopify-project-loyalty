@@ -169,6 +169,7 @@ async function ensureConfigTable(db) {
   await db.query(`
     CREATE TABLE IF NOT EXISTS netst_loyalty_config_table (
       id SERIAL PRIMARY KEY,
+      customer_signup_points NUMERIC(10,2) DEFAULT 0.00,
       referral_points NUMERIC(10,2) DEFAULT 0.00,
       birthday_points NUMERIC(10,2) DEFAULT 0.00,
       anniversary_points NUMERIC(10,2) DEFAULT 0.00,
@@ -178,6 +179,10 @@ async function ensureConfigTable(db) {
     )
   `);
 
+  await db.query(`
+    ALTER TABLE netst_loyalty_config_table
+    ADD COLUMN IF NOT EXISTS customer_signup_points NUMERIC(10,2) DEFAULT 0.00
+  `);
   await db.query(`
     ALTER TABLE netst_loyalty_config_table
     ADD COLUMN IF NOT EXISTS referral_points NUMERIC(10,2) DEFAULT 0.00
@@ -247,7 +252,7 @@ async function loadProfileFeatureFlags(db) {
 async function loadProfileAwardConfig(db) {
   const result = await db.query(
     `
-      SELECT referral_points, birthday_points, anniversary_points, points_expiration_days
+      SELECT customer_signup_points, referral_points, birthday_points, anniversary_points, points_expiration_days
       FROM netst_loyalty_config_table
       ORDER BY id DESC
       LIMIT 1
@@ -256,6 +261,7 @@ async function loadProfileAwardConfig(db) {
 
   const row = result.rows[0] || {};
   return {
+    customerSignupPoints: toNumber(row.customer_signup_points, 0),
     referralPoints: toNumber(row.referral_points, 0),
     birthdayPoints: toNumber(row.birthday_points, 0),
     anniversaryPoints: toNumber(row.anniversary_points, 0),
@@ -548,7 +554,7 @@ export default async function handler(req, res) {
       const config = await loadProfileAwardConfig(client);
       const birthdayEvent = await ensureEventDefinition(client, 9, "Points Earned on Birthday");
       const anniversaryEvent = await ensureEventDefinition(client, 10, "Points Earned on Anniversary");
-      const referredSignupEvent = await ensureEventDefinition(client, 6, "Points Earned on Signup");
+      const referredSignupEvent = await loadEventDefinition(client, 13);
       const referrerRewardEvent = await ensureEventDefinition(
         client,
         5,
@@ -679,6 +685,58 @@ export default async function handler(req, res) {
           name: anniversaryEvent.name,
           reason: "scheduled_for_award_date",
         });
+      }
+    }
+
+    if (isAdminSave && !customerEligible && finalEligibleForLoyalty) {
+      const config = await loadProfileAwardConfig(client);
+      const adminEligibleEvent = await loadEventDefinition(client, 6);
+
+      if (!adminEligibleEvent?.name) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          error: "Required loyalty event is missing in netst_events_table.",
+        });
+      }
+
+      const signupPoints = Math.max(0, toNumber(config.customerSignupPoints, 0));
+      if (signupPoints > 0) {
+        const adminEligibilityAwardExists = await client.query(
+          `
+            SELECT id
+            FROM netst_customer__event_details_table
+            WHERE customer_id = $1
+              AND event_id = $2
+              AND LOWER(TRIM(COALESCE(comments, ''))) = LOWER(TRIM($3))
+            LIMIT 1
+          `,
+          [toNumber(customerId, 0), adminEligibleEvent.id, "Customer marked eligible by admin"]
+        );
+
+        if (!adminEligibilityAwardExists.rows.length) {
+          totalEarnedPoints += signupPoints;
+          availablePoints = totalEarnedPoints - totalRedeemedPoints;
+          newPointsAwarded += signupPoints;
+
+          await awardReferralEvent(client, {
+            customerId,
+            receiverEmail: finalCustomerEmail,
+            eventId: adminEligibleEvent.id,
+            eventName: adminEligibleEvent.name,
+            comments: "Customer marked eligible by admin",
+            pointsEarned: signupPoints,
+            pointsLeft: availablePoints,
+            pointsExpirationDate: buildPointsExpirationDate(config.pointsExpirationDays),
+            pointsExpirationDaysValue:
+              config.pointsExpirationDays > 0 ? String(config.pointsExpirationDays) : null,
+          });
+
+          awardedEvents.push({
+            id: adminEligibleEvent.id,
+            name: adminEligibleEvent.name,
+            pointsEarned: signupPoints,
+          });
+        }
       }
     }
 
