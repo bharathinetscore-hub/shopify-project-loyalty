@@ -104,7 +104,6 @@ export default async function handler(req, res) {
       created: row.created_at || row.date_created || null,
       expiryDate: row.points_expiration_date || null,
     }));
-
     return res.status(200).json({ giftcards });
   } catch (error) {
     console.error("get-giftcards error:", error);
