@@ -81,7 +81,7 @@ export default async function handler(req, res) {
     const customers = (payload?.data?.customers?.nodes || []).map((node) => {
       const gid = String(node?.id || "");
       const id = gid.split("/").pop() || "";
-      const name = `${node?.firstName || ""} ${node?.lastName || ""}`.trim() || "Unnamed Customer";
+      const name = `${node?.firstName || ""} ${node?.lastName || ""}`.trim();
       return {
         id,
         name,

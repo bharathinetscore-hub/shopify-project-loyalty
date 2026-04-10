@@ -129,11 +129,15 @@ async function getCustomerContext(runtimeApi) {
   const customerIdRaw = idCandidates.map(cleanText).find(Boolean) || "";
   const customerEmail = emailCandidates.map(cleanText).find(Boolean) || "";
   const customerId = parseCustomerId(customerIdRaw);
+  const fullName = [firstNameCandidates.map(cleanText).find(Boolean), lastNameCandidates.map(cleanText).find(Boolean)]
+    .filter(Boolean)
+    .join(" ");
   const customerName =
-    displayNameCandidates.map(cleanText).find(Boolean) ||
-    [firstNameCandidates.map(cleanText).find(Boolean), lastNameCandidates.map(cleanText).find(Boolean)]
-      .filter(Boolean)
-      .join(" ");
+    fullName ||
+    displayNameCandidates
+      .map(cleanText)
+      .find((value) => value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) ||
+    "";
 
   if (customerId || customerEmail || customerName) {
     return { customerIdRaw, customerId, customerEmail, customerName };
@@ -150,12 +154,14 @@ async function getCustomerContext(runtimeApi) {
       const payload = decodeJwtPayload(token);
       const sub = cleanText(payload?.sub || "");
       const email = cleanText(payload?.email || "");
-      return {
-        customerIdRaw: sub,
-        customerId: parseCustomerId(sub),
-        customerEmail: email,
-        customerName: cleanText(payload?.name || ""),
-      };
+        return {
+          customerIdRaw: sub,
+          customerId: parseCustomerId(sub),
+          customerEmail: email,
+          customerName: cleanText(payload?.name || "").match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+            ? ""
+            : cleanText(payload?.name || ""),
+        };
     }
   } catch {
     // no-op

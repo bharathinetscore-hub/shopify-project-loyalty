@@ -170,7 +170,7 @@ async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, cus
 
   const referralCode = await generateUniqueReferralCode(resolvedCustomerId, customerName);
   const resolvedCustomerEmail = cleanText(existing?.customer_email) || cleanText(customerEmail) || null;
-  const resolvedCustomerName = cleanText(customerName) || resolvedCustomerEmail || `Customer ${resolvedCustomerId}`;
+  const resolvedCustomerName = cleanText(customerName);
 
   await pool.query(
     `

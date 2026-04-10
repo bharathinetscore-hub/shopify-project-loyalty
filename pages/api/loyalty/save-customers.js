@@ -9,7 +9,7 @@ function normalizeCustomer(row = {}) {
   const safeName =
     name && !emailPattern.test(name) && name.toLowerCase() !== email.toLowerCase()
       ? name
-      : "Unnamed Customer";
+      : "";
   return {
     id,
     name: safeName,

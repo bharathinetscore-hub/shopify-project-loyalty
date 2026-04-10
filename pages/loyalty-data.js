@@ -437,7 +437,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
     return {
       id,
-      name: fullName || safeFallbackName || "Unnamed Customer",
+      name: fullName || safeFallbackName || "",
       email,
     };
   }

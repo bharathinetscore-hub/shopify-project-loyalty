@@ -49,7 +49,7 @@ function normalizeDisplayName(name, email, customerId) {
     return safeName;
   }
 
-  return `Customer ${String(customerId || "").trim() || "-"}`;
+  return "";
 }
 
 export default async function handler(req, res) {

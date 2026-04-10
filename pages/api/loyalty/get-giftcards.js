@@ -95,7 +95,7 @@ export default async function handler(req, res) {
     const giftcards = result.rows.map((row) => ({
       id: Number(row.id || 0),
       customerId: String(row.customer_id || ""),
-      customerName: cleanText(row.customer_name) || `Customer ${String(row.customer_id || "-")}`,
+      customerName: cleanText(row.customer_name),
       email: cleanText(row.receiver_email) || cleanText(row.customer_email) || "-",
       code: cleanText(row.gift_code),
       amount: Number(row.amount || 0),

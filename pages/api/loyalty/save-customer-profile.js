@@ -63,7 +63,7 @@ function normalizeCustomerName(name, email, customerId) {
     return safeName;
   }
 
-  return `Customer ${customerId}`;
+  return "";
 }
 
 async function generateUniqueReferralCode(db, customerId, customerName) {
