@@ -324,6 +324,23 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
     }
   }
 
+  async function refreshCustomerContextIfChanged() {
+    try {
+      const latestCustomerContext = await getCustomerContext(runtimeApi);
+      const hasIdentityChanged =
+        cleanText(latestCustomerContext?.customerIdRaw) !== cleanText(customerContext?.customerIdRaw) ||
+        cleanText(latestCustomerContext?.customerId) !== cleanText(customerContext?.customerId) ||
+        cleanText(latestCustomerContext?.customerEmail) !== cleanText(customerContext?.customerEmail) ||
+        cleanText(latestCustomerContext?.customerName) !== cleanText(customerContext?.customerName);
+
+      if (hasIdentityChanged) {
+        await loadData();
+      }
+    } catch {
+      // no-op
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
 
@@ -332,6 +349,30 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
       cancelled = true;
     };
   }, [runtimeApi]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const handleWindowFocus = () => {
+      refreshCustomerContextIfChanged();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshCustomerContextIfChanged();
+      }
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [runtimeApi, customerContext]);
 
   const tableHeaders = useMemo(
     () => ["Date", "Activity Performed", "Reference ID", "Points Earned"],
