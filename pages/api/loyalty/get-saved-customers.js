@@ -40,6 +40,18 @@ async function ensureCustomersTable() {
   await ensureColumn("available_points", "available_points NUMERIC(12,2) NOT NULL DEFAULT 0");
 }
 
+function normalizeDisplayName(name, email, customerId) {
+  const safeName = String(name || "").trim();
+  const safeEmail = String(email || "").trim();
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (safeName && !emailPattern.test(safeName) && safeName.toLowerCase() !== safeEmail.toLowerCase()) {
+    return safeName;
+  }
+
+  return `Customer ${String(customerId || "").trim() || "-"}`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -80,7 +92,7 @@ export default async function handler(req, res) {
 
     const customers = result.rows.map((row) => ({
       id: String(row.customer_id || ""),
-      name: String(row.customer_name || ""),
+      name: normalizeDisplayName(row.customer_name, row.customer_email, row.customer_id),
       email: String(row.customer_email || ""),
       birthday: row.customer_birthday || null,
       anniversary: row.customer_anniversary || null,

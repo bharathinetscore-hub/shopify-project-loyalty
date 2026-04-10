@@ -51,6 +51,21 @@ function buildReferralCodeSeed(customerId, customerName) {
   return `NSL-${nameSeed || "USER"}-${idSeed}${randomSeed}`;
 }
 
+function looksLikeEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanText(value));
+}
+
+function normalizeCustomerName(name, email, customerId) {
+  const safeName = cleanText(name);
+  const safeEmail = cleanText(email);
+
+  if (safeName && !looksLikeEmail(safeName) && safeName.toLowerCase() !== safeEmail.toLowerCase()) {
+    return safeName;
+  }
+
+  return `Customer ${customerId}`;
+}
+
 async function generateUniqueReferralCode(db, customerId, customerName) {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const candidate = buildReferralCodeSeed(customerId, customerName);
@@ -483,12 +498,12 @@ export default async function handler(req, res) {
 
     const existingCustomer = customerRes.rows[0] || {};
     const featureFlags = await loadProfileFeatureFlags(client);
-    const customerName =
-      requestedCustomerName ||
-      cleanText(existingCustomer.customer_name) ||
-      customerEmail ||
-      `Customer ${customerId}`;
     const finalCustomerEmail = customerEmail || cleanText(existingCustomer.customer_email) || null;
+    const customerName = normalizeCustomerName(
+      requestedCustomerName || cleanText(existingCustomer.customer_name),
+      finalCustomerEmail,
+      customerId
+    );
     const finalEligibleForLoyalty = hasEligibleForLoyalty
       ? requestedEligibleForLoyalty
       : Boolean(existingCustomer.customer_eligible_for_loyalty);

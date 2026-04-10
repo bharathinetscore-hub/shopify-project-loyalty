@@ -5,9 +5,14 @@ function normalizeCustomer(row = {}) {
   const id = rawId.includes("/") ? rawId.split("/").pop() : rawId;
   const name = String(row.name || "").trim();
   const email = String(row.email || "").trim();
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const safeName =
+    name && !emailPattern.test(name) && name.toLowerCase() !== email.toLowerCase()
+      ? name
+      : "Unnamed Customer";
   return {
     id,
-    name: name || "Unnamed Customer",
+    name: safeName,
     email,
   };
 }

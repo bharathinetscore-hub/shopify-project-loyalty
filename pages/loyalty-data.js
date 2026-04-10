@@ -429,10 +429,15 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     const fullName = `${firstName} ${lastName}`.trim();
     const fallbackName = String(item?.displayName || item?.title || "").trim();
     const email = String(item?.email || item?.defaultEmailAddress?.emailAddress || "").trim();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const safeFallbackName =
+      fallbackName && !emailPattern.test(fallbackName) && fallbackName.toLowerCase() !== email.toLowerCase()
+        ? fallbackName
+        : "";
 
     return {
       id,
-      name: fullName || fallbackName || "Unnamed Customer",
+      name: fullName || safeFallbackName || "Unnamed Customer",
       email,
     };
   }
