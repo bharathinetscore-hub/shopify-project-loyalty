@@ -197,6 +197,58 @@ async function ensureOrdersUpdatedWebhook(shop, accessToken, appHost) {
   return { created: true };
 }
 
+async function ensureCustomersUpdatedWebhook(shop, accessToken, appHost) {
+  const apiVersion = "2024-01";
+  const webhookAddress = `${appHost}/api/webhooks/customers-update`;
+
+  const listRes = await fetch(`https://${shop}/admin/api/${apiVersion}/webhooks.json`, {
+    headers: {
+      "X-Shopify-Access-Token": accessToken,
+      Accept: "application/json",
+    },
+  });
+  const listData = await listRes.json().catch(() => ({}));
+  if (!listRes.ok) {
+    throw new Error(`Unable to read webhooks (${listRes.status})`);
+  }
+
+  const exists = (listData.webhooks || []).some((webhook) => {
+    const topic = String(webhook?.topic || "").toLowerCase();
+    const address = String(webhook?.address || "").replace(/\/+$/, "");
+    return topic === "customers/update" && address === webhookAddress;
+  });
+  if (exists) return { created: false };
+
+  const createRes = await fetch(`https://${shop}/admin/api/${apiVersion}/webhooks.json`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": accessToken,
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      webhook: {
+        topic: "customers/update",
+        address: webhookAddress,
+        format: "json",
+      },
+    }),
+  });
+  if (!createRes.ok) {
+    const createData = await createRes.json().catch(() => ({}));
+    if (createRes.status === 422) {
+      const topicErr = createData?.errors?.topic?.[0] || "";
+      return {
+        created: false,
+        skipped: true,
+        reason: topicErr.includes("Invalid topic") ? "customers scope not granted" : topicErr || "webhook not allowed",
+      };
+    }
+    throw new Error(`Unable to create customers/update webhook (${createRes.status}): ${JSON.stringify(createData)}`);
+  }
+  return { created: true };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ success: false, message: "Method not allowed" });
@@ -249,6 +301,16 @@ export default async function handler(req, res) {
       console.warn("ensure-storefront-loader: orders webhook skipped —", webhookResult.reason);
     }
 
+    const customerWebhookResult = await ensureCustomersUpdatedWebhook(shop, accessToken, appHost).catch((error) => ({
+      created: false,
+      skipped: true,
+      reason: String(error?.message || error),
+    }));
+    const customerWebhookCreated = customerWebhookResult.created === true;
+    if (customerWebhookResult.skipped && customerWebhookResult.reason) {
+      console.warn("ensure-storefront-loader: customers webhook skipped â€”", customerWebhookResult.reason);
+    }
+
     return res.status(200).json({
       success: true,
       shop,
@@ -265,6 +327,10 @@ export default async function handler(req, res) {
       webhookSkipped: webhookResult.skipped === true,
       webhookSkipReason: webhookResult.reason || null,
       webhookError: webhookResult.reason || null,
+      customerWebhookCreated,
+      customerWebhookSkipped: customerWebhookResult.skipped === true,
+      customerWebhookSkipReason: customerWebhookResult.reason || null,
+      customerWebhookError: customerWebhookResult.reason || null,
     });
   } catch (error) {
     console.error("ensure-storefront-loader error:", error);
