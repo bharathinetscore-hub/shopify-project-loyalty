@@ -128,6 +128,32 @@ async function generateUniqueReferralCode(customerId, customerName) {
     .slice(-4)}`;
 }
 
+async function syncExistingCustomerIdentity({
+  resolvedCustomerId,
+  existingCustomerEmail,
+  incomingCustomerEmail,
+  incomingCustomerName,
+}) {
+  const resolvedCustomerEmail = cleanText(existingCustomerEmail) || cleanText(incomingCustomerEmail) || null;
+  const resolvedCustomerName = cleanText(incomingCustomerName);
+
+  await pool.query(
+    `
+      UPDATE netst_customers_table
+      SET
+        customer_name = COALESCE(NULLIF($2, ''), customer_name),
+        customer_email = COALESCE(NULLIF($3, ''), customer_email),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE customer_id = $1
+    `,
+    [
+      resolvedCustomerId,
+      resolvedCustomerName,
+      resolvedCustomerEmail,
+    ]
+  );
+}
+
 async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, customerEmail, customerName }) {
   const lookupRes = await pool.query(
     `
@@ -163,6 +189,13 @@ async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, cus
     return;
   }
 
+  await syncExistingCustomerIdentity({
+    resolvedCustomerId,
+    existingCustomerEmail: existing?.customer_email,
+    incomingCustomerEmail: customerEmail,
+    incomingCustomerName: customerName,
+  });
+
   const existingCode = cleanText(existing?.customer_referral_code);
   if (existingCode) {
     return;
@@ -170,21 +203,18 @@ async function ensureCustomerReferralCode({ customerIdRaw, customerIdParsed, cus
 
   const referralCode = await generateUniqueReferralCode(resolvedCustomerId, customerName);
   const resolvedCustomerEmail = cleanText(existing?.customer_email) || cleanText(customerEmail) || null;
-  const resolvedCustomerName = cleanText(customerName);
 
   await pool.query(
     `
       UPDATE netst_customers_table
       SET
-        customer_name = COALESCE(NULLIF($2, ''), customer_name),
-        customer_email = COALESCE(NULLIF($3, ''), customer_email),
-        customer_referral_code = COALESCE(NULLIF(customer_referral_code, ''), $4),
+        customer_email = COALESCE(NULLIF($2, ''), customer_email),
+        customer_referral_code = COALESCE(NULLIF(customer_referral_code, ''), $3),
         updated_at = CURRENT_TIMESTAMP
       WHERE customer_id = $1
     `,
     [
       resolvedCustomerId,
-      resolvedCustomerName,
       resolvedCustomerEmail,
       referralCode,
     ]
