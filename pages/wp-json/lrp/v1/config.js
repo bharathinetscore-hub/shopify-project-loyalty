@@ -1,5 +1,5 @@
-import pool from "../../../../../db/db";
-import { saveConfig } from "../../../../../models/LoyaltyConfig";
+import pool from "../../../../db/db";
+import { saveConfig } from "../../../../models/LoyaltyConfig";
 
 function cleanText(value) {
   return String(value || "").trim();
