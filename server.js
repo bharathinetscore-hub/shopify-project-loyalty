@@ -26,6 +26,14 @@ function normalizePathname(pathname) {
   return value.replace(/\/{2,}/g, "/") || "/";
 }
 
+function resolveInternalPathname(pathname) {
+  if (pathname === "/wp-json/lrp/v1/config") {
+    return "/api/wp-json/lrp/v1/config";
+  }
+
+  return pathname;
+}
+
 function isEmbeddedAdminRequest(query) {
   if (!query || typeof query !== "object") return false;
   return (
@@ -57,8 +65,9 @@ app.prepare().then(() => {
         const requestUrl = normalizeIncomingUrl(req.url || "/");
         const parsedUrl = parse(requestUrl, true);
         const pathname = normalizePathname(parsedUrl.pathname || "/");
+        const resolvedPathname = resolveInternalPathname(pathname);
 
-        if (pathname === "/api/debug/health") {
+        if (resolvedPathname === "/api/debug/health") {
           res.statusCode = 200;
           res.setHeader("Content-Type", "application/json; charset=utf-8");
           res.end(
@@ -66,23 +75,23 @@ app.prepare().then(() => {
               ok: true,
               requestId,
               rawUrl: requestUrl,
-              pathname,
+              pathname: resolvedPathname,
               time: new Date().toISOString(),
             })
           );
           return;
         }
 
-        if (req.method === "GET" && pathname === "/" && isEmbeddedAdminRequest(parsedUrl.query)) {
+        if (req.method === "GET" && resolvedPathname === "/" && isEmbeddedAdminRequest(parsedUrl.query)) {
           res.statusCode = 302;
           res.setHeader("Location", buildAppUrl("/dashboard", parsedUrl.query));
           res.end();
           return;
         }
 
-        req.url = pathname;
+        req.url = resolvedPathname;
         req.headers["x-request-id"] = requestId;
-        return handle(req, res, { pathname, query: parsedUrl.query });
+        return handle(req, res, { pathname: resolvedPathname, query: parsedUrl.query });
       } catch (error) {
         console.error(error && error.stack ? error.stack : error);
         if (!res.headersSent) {
