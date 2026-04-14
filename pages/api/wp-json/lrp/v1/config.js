@@ -120,9 +120,72 @@ async function upsertEvent(eventInput) {
   };
 }
 
+async function deleteEvents(deleteInput) {
+  const raw = deleteInput && typeof deleteInput === "object" ? deleteInput : {};
+
+  const ids = Array.isArray(raw.ids) ? raw.ids : raw.id !== undefined ? [raw.id] : [];
+  const eventIds = Array.isArray(raw.eventIds)
+    ? raw.eventIds
+    : raw.eventId !== undefined
+      ? [raw.eventId]
+      : [];
+
+  const normalizedIds = ids
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  const normalizedEventIds = eventIds
+    .map((value) => cleanText(value))
+    .filter(Boolean);
+
+  if (!normalizedIds.length && !normalizedEventIds.length) {
+    throw new Error("Send id, ids, eventId, or eventIds to delete events.");
+  }
+
+  const deleted = [];
+
+  if (normalizedIds.length) {
+    const result = await pool.query(
+      `
+      DELETE FROM netst_events_table
+      WHERE id = ANY($1::bigint[])
+      RETURNING id, event_id, event_name
+      `,
+      [normalizedIds]
+    );
+    deleted.push(
+      ...result.rows.map((row) => ({
+        id: Number(row.id),
+        eventId: row.event_id || "",
+        eventName: row.event_name || "",
+      }))
+    );
+  }
+
+  if (normalizedEventIds.length) {
+    const result = await pool.query(
+      `
+      DELETE FROM netst_events_table
+      WHERE event_id = ANY($1::text[])
+      RETURNING id, event_id, event_name
+      `,
+      [normalizedEventIds]
+    );
+    deleted.push(
+      ...result.rows.map((row) => ({
+        id: Number(row.id),
+        eventId: row.event_id || "",
+        eventName: row.event_name || "",
+      }))
+    );
+  }
+
+  return deleted;
+}
+
 function normalizeRequestPayload(body) {
   const raw = body && typeof body === "object" ? body : {};
-  const config = raw.config && typeof raw.config === "object" ? raw.config : raw;
+  const configInput = raw.config && typeof raw.config === "object" ? raw.config : raw;
 
   const events = Array.isArray(raw.events)
     ? raw.events
@@ -130,7 +193,27 @@ function normalizeRequestPayload(body) {
       ? [raw.event]
       : [];
 
+  const config = {
+    signup: configInput.signup ?? configInput.customer_signup_points,
+    referral: configInput.referral ?? configInput.referral_points,
+    birthday: configInput.birthday ?? configInput.birthday_points,
+    anniversary: configInput.anniversary ?? configInput.anniversary_points,
+    pointValue: configInput.pointValue ?? configInput.each_point_value,
+    equivalent: configInput.equivalent ?? configInput.loyalty_point_value,
+    pointsExpiry: configInput.pointsExpiry ?? configInput.points_expiration_days,
+    giftcardExpiry: configInput.giftcardExpiry ?? configInput.giftcard_expiry_days,
+    netsuiteEndpoint: configInput.netsuiteEndpoint ?? configInput.netsuite_endpoint_url,
+    threshold: configInput.threshold ?? configInput.minimum_redemption_points,
+    email: configInput.email ?? configInput.email_share_points,
+    facebook: configInput.facebook ?? configInput.facebook_share_points,
+  };
+
   return { config, events };
+}
+
+function normalizeDeletePayload(body) {
+  const raw = body && typeof body === "object" ? body : {};
+  return raw.delete && typeof raw.delete === "object" ? raw.delete : raw;
 }
 
 export default async function handler(req, res) {
@@ -144,6 +227,29 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === "DELETE") {
+    try {
+      await ensureEventsTable();
+
+      const deletedEvents = await deleteEvents(normalizeDeletePayload(req.body));
+      const [latestConfig, latestEvents] = await Promise.all([loadConfigRow(), loadEventsRows()]);
+
+      return res.status(200).json({
+        success: true,
+        deletedEventsCount: deletedEvents.length,
+        deletedEvents,
+        config: latestConfig,
+        events: latestEvents,
+      });
+    } catch (error) {
+      console.error("wp-json/lrp/v1/config delete error:", error);
+      return res.status(500).json({
+        success: false,
+        error: cleanText(error?.message) || "Failed to delete events",
+      });
+    }
+  }
+
   if (req.method !== "POST" && req.method !== "PUT") {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
@@ -152,7 +258,7 @@ export default async function handler(req, res) {
     await ensureEventsTable();
 
     const { config, events } = normalizeRequestPayload(req.body);
-    const hasConfigPayload = Object.keys(config || {}).some((key) => !["events", "event"].includes(key));
+    const hasConfigPayload = Object.values(config || {}).some((value) => value !== undefined);
 
     if (!hasConfigPayload && !events.length) {
       return res.status(400).json({
