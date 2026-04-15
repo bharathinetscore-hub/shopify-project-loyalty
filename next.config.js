@@ -10,6 +10,10 @@ const nextConfig = {
         source: "/wp-json/lrp/v1/customer",
         destination: "/api/wp-json/lrp/v1/customer",
       },
+      {
+        source: "/wp-json/lrp/v1/items",
+        destination: "/api/wp-json/lrp/v1/items",
+      },
     ];
   },
   async headers() {

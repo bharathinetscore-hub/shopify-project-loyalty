@@ -35,6 +35,10 @@ function resolveInternalPathname(pathname) {
     return "/api/wp-json/lrp/v1/customer";
   }
 
+  if (pathname === "/wp-json/lrp/v1/items") {
+    return "/api/wp-json/lrp/v1/items";
+  }
+
   return pathname;
 }
 
