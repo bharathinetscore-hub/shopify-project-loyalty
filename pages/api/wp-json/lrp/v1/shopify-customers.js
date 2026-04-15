@@ -103,8 +103,99 @@ async function fetchCustomersPage(shop, accessToken, cursor, pageSize) {
   return { response, payload };
 }
 
+async function createCustomer(shop, accessToken, input) {
+  const query = `
+    mutation CreateCustomer($input: CustomerInput!) {
+      customerCreate(input: $input) {
+        customer {
+          id
+          legacyResourceId
+          firstName
+          lastName
+          displayName
+          email
+          phone
+          state
+          createdAt
+          updatedAt
+          numberOfOrders
+          amountSpent {
+            amount
+            currencyCode
+          }
+          defaultAddress {
+            address1
+            address2
+            city
+            province
+            country
+            zip
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": accessToken,
+    },
+    body: JSON.stringify({
+      query,
+      variables: { input },
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload };
+}
+
+function normalizeCustomerCreatePayload(body) {
+  const raw = body && typeof body === "object" ? body : {};
+  const input = raw.customer && typeof raw.customer === "object" ? raw.customer : raw;
+
+  return {
+    firstName: cleanText(input.firstName ?? input.first_name),
+    lastName: cleanText(input.lastName ?? input.last_name),
+    email: cleanText(input.email),
+    phone: cleanText(input.phone),
+    tags: Array.isArray(input.tags)
+      ? input.tags.map((tag) => cleanText(tag)).filter(Boolean)
+      : cleanText(input.tags)
+        ? cleanText(input.tags)
+            .split(",")
+            .map((tag) => cleanText(tag))
+            .filter(Boolean)
+        : [],
+    note: cleanText(input.note),
+    emailMarketingConsent: input.emailMarketingConsent ?? null,
+    smsMarketingConsent: input.smsMarketingConsent ?? null,
+  };
+}
+
+function buildCustomerInput(payload) {
+  const input = {};
+
+  if (payload.firstName) input.firstName = payload.firstName;
+  if (payload.lastName) input.lastName = payload.lastName;
+  if (payload.email) input.email = payload.email;
+  if (payload.phone) input.phone = payload.phone;
+  if (payload.tags.length) input.tags = payload.tags;
+  if (payload.note) input.note = payload.note;
+  if (payload.emailMarketingConsent) input.emailMarketingConsent = payload.emailMarketingConsent;
+  if (payload.smsMarketingConsent) input.smsMarketingConsent = payload.smsMarketingConsent;
+
+  return input;
+}
+
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
+  if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
@@ -128,6 +219,42 @@ export default async function handler(req, res) {
   const fetchAll = cleanText(req.query.all).toLowerCase() === "true";
 
   try {
+    if (req.method === "POST") {
+      const payload = normalizeCustomerCreatePayload(req.body);
+      const input = buildCustomerInput(payload);
+
+      if (!input.email && !input.phone) {
+        return res.status(400).json({
+          success: false,
+          error: "Send at least email or phone to create a Shopify customer.",
+        });
+      }
+
+      const { response, payload: upstreamPayload } = await createCustomer(shop, accessToken, input);
+      const userErrors = upstreamPayload?.data?.customerCreate?.userErrors || [];
+      const createdCustomer = upstreamPayload?.data?.customerCreate?.customer || null;
+
+      if (!response.ok || upstreamPayload?.errors?.length || userErrors.length) {
+        return res.status(response.ok ? 422 : response.status).json({
+          success: false,
+          error:
+            userErrors[0]?.message ||
+            upstreamPayload?.errors?.[0]?.message ||
+            upstreamPayload?.message ||
+            "Failed to create Shopify customer",
+          shop,
+          upstreamStatus: response.status,
+          details: upstreamPayload,
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        shop,
+        customer: mapCustomer(createdCustomer),
+      });
+    }
+
     const customers = [];
     let cursor = null;
     let hasNextPage = true;
