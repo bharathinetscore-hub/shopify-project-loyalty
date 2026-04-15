@@ -43,6 +43,10 @@ function resolveInternalPathname(pathname) {
     return "/api/wp-json/lrp/v1/tiers";
   }
 
+  if (pathname === "/wp-json/lrp/v1/event") {
+    return "/api/wp-json/lrp/v1/event";
+  }
+
   return pathname;
 }
 
