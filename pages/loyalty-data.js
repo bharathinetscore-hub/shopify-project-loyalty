@@ -314,6 +314,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   const [customersError, setCustomersError] = useState("");
   const [customersInfo, setCustomersInfo] = useState("");
   const [customersSearch, setCustomersSearch] = useState("");
+  const [customerSectionTab, setCustomerSectionTab] = useState("customers");
   const [isCustomerPickerOpen, setIsCustomerPickerOpen] = useState(false);
   const [customerCandidates, setCustomerCandidates] = useState([]);
   const [customerCandidatesLoading, setCustomerCandidatesLoading] = useState(false);
@@ -327,6 +328,18 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
   const [viewingCustomerEvents, setViewingCustomerEvents] = useState([]);
   const [viewingCustomerEventsLoading, setViewingCustomerEventsLoading] = useState(false);
   const [viewingCustomerEventsError, setViewingCustomerEventsError] = useState("");
+  const [isCustomerEventModalOpen, setIsCustomerEventModalOpen] = useState(false);
+  const [isCustomerEventSaving, setIsCustomerEventSaving] = useState(false);
+  const [customerEventTarget, setCustomerEventTarget] = useState(null);
+  const [customerEventForm, setCustomerEventForm] = useState({
+    eventId: "",
+    eventName: "",
+    pointsType: "positive",
+    pointsValue: "",
+    amount: "",
+    comments: "",
+    dateCreated: "",
+  });
 
   const [customersPage, setCustomersPage] = useState(1);
   const [eventsPage, setEventsPage] = useState(1);
@@ -920,6 +933,118 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
     setViewingCustomerEventsError("");
     setIsCustomerViewModalOpen(true);
     loadCustomerEvents(row);
+  }
+
+  function resetCustomerEventForm() {
+    setCustomerEventForm({
+      eventId: "",
+      eventName: "",
+      pointsType: "positive",
+      pointsValue: "",
+      amount: "",
+      comments: "",
+      dateCreated: "",
+    });
+  }
+
+  function openCustomerEventModal(row) {
+    setCustomerEventTarget({
+      id: String(row?.id || ""),
+      name: String(row?.name || ""),
+      email: String(row?.email || ""),
+    });
+    resetCustomerEventForm();
+    setIsCustomerEventModalOpen(true);
+  }
+
+  async function saveCustomerEvent() {
+    if (!customerEventTarget?.id) {
+      setCustomersError("Customer ID is required.");
+      return;
+    }
+
+    if (!customerEventForm.eventId && !customerEventForm.eventName.trim()) {
+      setCustomersError("Select an event or enter an event name.");
+      return;
+    }
+
+    if (!customerEventForm.pointsValue || Number(customerEventForm.pointsValue) <= 0) {
+      setCustomersError("Points value must be greater than 0.");
+      return;
+    }
+
+    try {
+      setIsCustomerEventSaving(true);
+      setCustomersError("");
+
+      const selectedEvent = eventsRows.find(
+        (event) => String(event.eventId || "") === String(customerEventForm.eventId || "")
+      );
+
+      const res = await fetch("/api/loyalty/save-customer-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          customerId: customerEventTarget.id,
+          customerEmail: customerEventTarget.email,
+          eventId: customerEventForm.eventId || "",
+          eventName: customerEventForm.eventName || selectedEvent?.eventName || "",
+          pointsType: customerEventForm.pointsType,
+          pointsValue: customerEventForm.pointsValue,
+          amount: customerEventForm.amount || 0,
+          comments: customerEventForm.comments || "",
+          dateCreated: customerEventForm.dateCreated || "",
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Failed to save customer event");
+      }
+
+      const savedCustomer = data.customer || {};
+      setCustomersRows((prev) =>
+        prev.map((row) =>
+          String(row.id) === String(savedCustomer.id)
+            ? {
+                ...row,
+                totalEarnedPoints: Number(savedCustomer.totalEarnedPoints || 0),
+                totalRedeemedPoints: Number(savedCustomer.totalRedeemedPoints || 0),
+                availablePoints: Number(savedCustomer.availablePoints || 0),
+              }
+            : row
+        )
+      );
+
+      if (viewingCustomer && String(viewingCustomer.id) === String(savedCustomer.id)) {
+        setViewingCustomer((prev) =>
+          prev
+            ? {
+                ...prev,
+                totalEarnedPoints: Number(savedCustomer.totalEarnedPoints || 0),
+                totalRedeemedPoints: Number(savedCustomer.totalRedeemedPoints || 0),
+                availablePoints: Number(savedCustomer.availablePoints || 0),
+              }
+            : prev
+        );
+        await loadCustomerEvents(savedCustomer);
+      }
+
+      setCustomersInfo(
+        `Added ${data?.event?.eventName || "customer event"} for ${customerEventTarget.name || customerEventTarget.id}.`
+      );
+      setIsCustomerEventModalOpen(false);
+      setCustomerEventTarget(null);
+      resetCustomerEventForm();
+    } catch (error) {
+      console.error("saveCustomerEvent error:", error);
+      setCustomersError(error?.message || "Failed to save customer event");
+    } finally {
+      setIsCustomerEventSaving(false);
+    }
   }
 
   async function loadCustomerEvents(row) {
@@ -1621,46 +1746,87 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
         </div>
       )}
 
-      <PaginatedTable
-        columns={[
-          "S.No",
-          "Name",
-          "Email",
-          "Total Earned Points",
-          "Total Redeemed Points",
-          "Available Points",
-          "Edit",
-          "Eligible?",
-          "View",
-        ]}
-        rows={customersRows.map((row, index) => [
-          String(index + 1),
-          row.name || "-",
-          row.email || "-",
-          Number(row.totalEarnedPoints || 0).toFixed(2),
-          Number(row.totalRedeemedPoints || 0).toFixed(2),
-          Number(row.availablePoints || 0).toFixed(2),
-          <Button size="slim" onClick={() => openCustomerEditModal(row)}>
-            Edit
-          </Button>,
-          <label key={`eligible-${row.id}`} className="events-switch-wrap">
-            <input
-              className="events-switch-input"
-              type="checkbox"
-              checked={!!row.eligibleForLoyalty}
-              onChange={() => toggleCustomerEligible(row)}
-            />
-            <span className="events-switch-slider" />
-          </label>,
-          <Button size="slim" onClick={() => openCustomerViewModal(row)}>
-            View
-          </Button>,
-        ])}
-        page={customersPage}
-        setPage={setCustomersPage}
-        perPage={customersPerPage}
-        setPerPage={setCustomersPerPage}
-      />
+      <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <Button
+          variant={customerSectionTab === "customers" ? "primary" : "secondary"}
+          onClick={() => setCustomerSectionTab("customers")}
+        >
+          Customer List
+        </Button>
+        <Button
+          variant={customerSectionTab === "add-customer-event" ? "primary" : "secondary"}
+          onClick={() => setCustomerSectionTab("add-customer-event")}
+        >
+          Add Customer Event
+        </Button>
+      </div>
+
+      {customerSectionTab === "customers" ? (
+        <PaginatedTable
+          columns={[
+            "S.No",
+            "Name",
+            "Email",
+            "Total Earned Points",
+            "Total Redeemed Points",
+            "Available Points",
+            "Edit",
+            "Eligible?",
+            "View",
+          ]}
+          rows={customersRows.map((row, index) => [
+            String(index + 1),
+            row.name || "-",
+            row.email || "-",
+            Number(row.totalEarnedPoints || 0).toFixed(2),
+            Number(row.totalRedeemedPoints || 0).toFixed(2),
+            Number(row.availablePoints || 0).toFixed(2),
+            <Button size="slim" onClick={() => openCustomerEditModal(row)}>
+              Edit
+            </Button>,
+            <label key={`eligible-${row.id}`} className="events-switch-wrap">
+              <input
+                className="events-switch-input"
+                type="checkbox"
+                checked={!!row.eligibleForLoyalty}
+                onChange={() => toggleCustomerEligible(row)}
+              />
+              <span className="events-switch-slider" />
+            </label>,
+            <Button size="slim" onClick={() => openCustomerViewModal(row)}>
+              View
+            </Button>,
+          ])}
+          page={customersPage}
+          setPage={setCustomersPage}
+          perPage={customersPerPage}
+          setPerPage={setCustomersPerPage}
+        />
+      ) : (
+        <PaginatedTable
+          columns={[
+            "S.No",
+            "Name",
+            "Email",
+            "Available Points",
+            "Add Customer Event",
+          ]}
+          rows={customersRows.map((row, index) => [
+            String(index + 1),
+            row.name || "-",
+            row.email || "-",
+            Number(row.availablePoints || 0).toFixed(2),
+            <Button size="slim" onClick={() => openCustomerEventModal(row)}>
+              Add Customer Event
+            </Button>,
+          ])}
+          page={customersPage}
+          setPage={setCustomersPage}
+          perPage={customersPerPage}
+          setPerPage={setCustomersPerPage}
+          emptyLabel="No customers available to add events"
+        />
+      )}
 
       <Modal
         open={isCustomerPickerOpen}
@@ -1863,6 +2029,132 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
                 value={editingCustomer.availablePoints || "0"}
                 onChange={(value) =>
                   setEditingCustomer((prev) => (prev ? { ...prev, availablePoints: value } : prev))
+                }
+              />
+            </FormLayout>
+          )}
+        </Modal.Section>
+      </Modal>
+
+      <Modal
+        open={isCustomerEventModalOpen}
+        onClose={() => {
+          if (isCustomerEventSaving) return;
+          setIsCustomerEventModalOpen(false);
+          setCustomerEventTarget(null);
+          resetCustomerEventForm();
+        }}
+        title="Add customer event"
+        primaryAction={{
+          content: isCustomerEventSaving ? "Saving..." : "Save",
+          onAction: saveCustomerEvent,
+          loading: isCustomerEventSaving,
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: () => {
+              if (isCustomerEventSaving) return;
+              setIsCustomerEventModalOpen(false);
+              setCustomerEventTarget(null);
+              resetCustomerEventForm();
+            },
+          },
+        ]}
+      >
+        <Modal.Section>
+          {!customerEventTarget ? (
+            <Text as="p" variant="bodyMd">No customer selected.</Text>
+          ) : (
+            <FormLayout>
+              <TextField
+                label="Customer Name"
+                value={customerEventTarget.name || ""}
+                readOnly
+                autoComplete="off"
+              />
+              <TextField
+                label="Customer Email"
+                value={customerEventTarget.email || ""}
+                readOnly
+                autoComplete="off"
+              />
+              <Select
+                label="Event"
+                options={[
+                  { label: "Select an event", value: "" },
+                  ...eventsRows
+                    .filter((event) => !!event.isActive)
+                    .map((event) => ({
+                      label: `${event.eventName || "Event"} (${event.eventId || "-"})`,
+                      value: String(event.eventId || ""),
+                    })),
+                ]}
+                value={customerEventForm.eventId}
+                onChange={(value) => {
+                  const selectedEvent = eventsRows.find(
+                    (event) => String(event.eventId || "") === String(value)
+                  );
+                  setCustomerEventForm((prev) => ({
+                    ...prev,
+                    eventId: value,
+                    eventName: selectedEvent?.eventName || prev.eventName,
+                  }));
+                }}
+              />
+              <TextField
+                label="Event Name"
+                value={customerEventForm.eventName}
+                autoComplete="off"
+                onChange={(value) =>
+                  setCustomerEventForm((prev) => ({ ...prev, eventName: value }))
+                }
+              />
+              <Select
+                label="Points Type"
+                options={[
+                  { label: "Positive (award points)", value: "positive" },
+                  { label: "Negative (redeem/deduct points)", value: "negative" },
+                ]}
+                value={customerEventForm.pointsType}
+                onChange={(value) =>
+                  setCustomerEventForm((prev) => ({ ...prev, pointsType: value }))
+                }
+              />
+              <TextField
+                label="Points Value"
+                type="number"
+                autoComplete="off"
+                value={customerEventForm.pointsValue}
+                onChange={(value) =>
+                  setCustomerEventForm((prev) => ({ ...prev, pointsValue: value }))
+                }
+              />
+              <TextField
+                label="Amount"
+                type="number"
+                autoComplete="off"
+                value={customerEventForm.amount}
+                onChange={(value) =>
+                  setCustomerEventForm((prev) => ({ ...prev, amount: value }))
+                }
+              />
+              <TextField
+                label="Date"
+                type="date"
+                autoComplete="off"
+                value={customerEventForm.dateCreated}
+                onChange={(value) =>
+                  setCustomerEventForm((prev) => ({ ...prev, dateCreated: value }))
+                }
+              />
+              <TextField
+                label="Comments"
+                multiline={3}
+                autoComplete="off"
+                value={customerEventForm.comments}
+                onChange={(value) =>
+                  setCustomerEventForm((prev) => ({ ...prev, comments: value }))
                 }
               />
             </FormLayout>
