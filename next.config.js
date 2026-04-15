@@ -14,6 +14,10 @@ const nextConfig = {
         source: "/wp-json/lrp/v1/items",
         destination: "/api/wp-json/lrp/v1/items",
       },
+      {
+        source: "/wp-json/lrp/v1/tiers",
+        destination: "/api/wp-json/lrp/v1/tiers",
+      },
     ];
   },
   async headers() {
