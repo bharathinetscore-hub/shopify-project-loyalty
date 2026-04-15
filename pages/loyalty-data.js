@@ -2066,98 +2066,117 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           {!customerEventTarget ? (
             <Text as="p" variant="bodyMd">No customer selected.</Text>
           ) : (
-            <FormLayout>
-              <TextField
-                label="Customer Name"
-                value={customerEventTarget.name || ""}
-                readOnly
-                autoComplete="off"
-              />
-              <TextField
-                label="Customer Email"
-                value={customerEventTarget.email || ""}
-                readOnly
-                autoComplete="off"
-              />
-              <Select
-                label="Event"
-                options={[
-                  { label: "Select an event", value: "" },
-                  ...eventsRows
-                    .filter((event) => !!event.isActive)
-                    .map((event) => ({
-                      label: `${event.eventName || "Event"} (${event.eventId || "-"})`,
-                      value: String(event.eventId || ""),
-                    })),
-                ]}
-                value={customerEventForm.eventId}
-                onChange={(value) => {
-                  const selectedEvent = eventsRows.find(
-                    (event) => String(event.eventId || "") === String(value)
-                  );
-                  setCustomerEventForm((prev) => ({
-                    ...prev,
-                    eventId: value,
-                    eventName: selectedEvent?.eventName || prev.eventName,
-                  }));
-                }}
-              />
-              <TextField
-                label="Event Name"
-                value={customerEventForm.eventName}
-                autoComplete="off"
-                onChange={(value) =>
-                  setCustomerEventForm((prev) => ({ ...prev, eventName: value }))
-                }
-              />
-              <Select
-                label="Points Type"
-                options={[
-                  { label: "Positive (award points)", value: "positive" },
-                  { label: "Negative (redeem/deduct points)", value: "negative" },
-                ]}
-                value={customerEventForm.pointsType}
-                onChange={(value) =>
-                  setCustomerEventForm((prev) => ({ ...prev, pointsType: value }))
-                }
-              />
-              <TextField
-                label="Points Value"
-                type="number"
-                autoComplete="off"
-                value={customerEventForm.pointsValue}
-                onChange={(value) =>
-                  setCustomerEventForm((prev) => ({ ...prev, pointsValue: value }))
-                }
-              />
-              <TextField
-                label="Amount"
-                type="number"
-                autoComplete="off"
-                value={customerEventForm.amount}
-                onChange={(value) =>
-                  setCustomerEventForm((prev) => ({ ...prev, amount: value }))
-                }
-              />
-              <TextField
-                label="Date"
-                type="date"
-                autoComplete="off"
-                value={customerEventForm.dateCreated}
-                onChange={(value) =>
-                  setCustomerEventForm((prev) => ({ ...prev, dateCreated: value }))
-                }
-              />
-              <TextField
-                label="Comments"
-                multiline={3}
-                autoComplete="off"
-                value={customerEventForm.comments}
-                onChange={(value) =>
-                  setCustomerEventForm((prev) => ({ ...prev, comments: value }))
-                }
-              />
-            </FormLayout>
+            <div className="customer-event-modal-shell">
+              <div className="customer-event-hero">
+                <div>
+                  <p className="customer-event-kicker">Reward target</p>
+                  <p className="customer-event-name">{customerEventTarget.name || "Unnamed customer"}</p>
+                  <p className="customer-event-email">{customerEventTarget.email || "No email available"}</p>
+                </div>
+                <div className="customer-event-id-pill">
+                  Customer ID: <span>{customerEventTarget.id || "-"}</span>
+                </div>
+              </div>
+
+              <div className="customer-event-grid">
+                <div className="customer-event-card">
+                  <p className="customer-event-card-title">Event Setup</p>
+                  <FormLayout>
+                    <Select
+                      label="Event"
+                      options={[
+                        { label: "Select an event", value: "" },
+                        ...eventsRows
+                          .filter((event) => !!event.isActive)
+                          .map((event) => ({
+                            label: `${event.eventName || "Event"} (${event.eventId || "-"})`,
+                            value: String(event.eventId || ""),
+                          })),
+                      ]}
+                      value={customerEventForm.eventId}
+                      onChange={(value) => {
+                        const selectedEvent = eventsRows.find(
+                          (event) => String(event.eventId || "") === String(value)
+                        );
+                        setCustomerEventForm((prev) => ({
+                          ...prev,
+                          eventId: value,
+                          eventName: selectedEvent?.eventName || prev.eventName,
+                        }));
+                      }}
+                    />
+                    <TextField
+                      label="Event Name"
+                      value={customerEventForm.eventName}
+                      autoComplete="off"
+                      onChange={(value) =>
+                        setCustomerEventForm((prev) => ({ ...prev, eventName: value }))
+                      }
+                    />
+                    <TextField
+                      label="Comments"
+                      multiline={4}
+                      autoComplete="off"
+                      value={customerEventForm.comments}
+                      onChange={(value) =>
+                        setCustomerEventForm((prev) => ({ ...prev, comments: value }))
+                      }
+                    />
+                  </FormLayout>
+                </div>
+
+                <div className="customer-event-card">
+                  <p className="customer-event-card-title">Points & Date</p>
+                  <FormLayout>
+                    <Select
+                      label="Points Type"
+                      options={[
+                        { label: "Positive (award points)", value: "positive" },
+                        { label: "Negative (redeem/deduct points)", value: "negative" },
+                      ]}
+                      value={customerEventForm.pointsType}
+                      onChange={(value) =>
+                        setCustomerEventForm((prev) => ({ ...prev, pointsType: value }))
+                      }
+                    />
+                    <div className="customer-event-inline-grid">
+                      <TextField
+                        label="Points Value"
+                        type="number"
+                        autoComplete="off"
+                        value={customerEventForm.pointsValue}
+                        onChange={(value) =>
+                          setCustomerEventForm((prev) => ({ ...prev, pointsValue: value }))
+                        }
+                      />
+                      <TextField
+                        label="Amount"
+                        type="number"
+                        autoComplete="off"
+                        value={customerEventForm.amount}
+                        onChange={(value) =>
+                          setCustomerEventForm((prev) => ({ ...prev, amount: value }))
+                        }
+                      />
+                    </div>
+                    <TextField
+                      label="Date"
+                      type="date"
+                      autoComplete="off"
+                      value={customerEventForm.dateCreated}
+                      onChange={(value) =>
+                        setCustomerEventForm((prev) => ({ ...prev, dateCreated: value }))
+                      }
+                    />
+                    <div className="customer-event-note">
+                      {customerEventForm.pointsType === "negative"
+                        ? "Negative events reduce the customer's available points."
+                        : "Positive events award new points and increase the customer's balance."}
+                    </div>
+                  </FormLayout>
+                </div>
+              </div>
+            </div>
           )}
         </Modal.Section>
       </Modal>
@@ -3236,6 +3255,106 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           row-gap: 10px;
         }
 
+        .customer-event-modal-shell {
+          display: grid;
+          gap: 14px;
+        }
+
+        .customer-event-hero {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 14px;
+          flex-wrap: wrap;
+          border: 1px solid #d6e4f7;
+          border-radius: 14px;
+          padding: 14px 16px;
+          background:
+            radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 32%),
+            linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+        }
+
+        .customer-event-kicker {
+          margin: 0 0 6px;
+          font-size: 11px;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: #64748b;
+          font-weight: 700;
+        }
+
+        .customer-event-name {
+          margin: 0;
+          font-size: 22px;
+          line-height: 1.15;
+          color: #0f172a;
+          font-weight: 800;
+        }
+
+        .customer-event-email {
+          margin: 6px 0 0;
+          font-size: 13px;
+          color: #475569;
+        }
+
+        .customer-event-id-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 34px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid #bfd3f4;
+          background: #eef5ff;
+          color: #1e3a8a;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .customer-event-id-pill span {
+          color: #0f172a;
+        }
+
+        .customer-event-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .customer-event-card {
+          border: 1px solid #dce8f8;
+          border-radius: 14px;
+          padding: 14px;
+          background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .customer-event-card-title {
+          margin: 0 0 12px;
+          color: #0f172a;
+          font-size: 14px;
+          font-weight: 800;
+          letter-spacing: 0.01em;
+        }
+
+        .customer-event-inline-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .customer-event-note {
+          border-radius: 10px;
+          padding: 10px 12px;
+          background: #eff6ff;
+          border: 1px solid #c7dcff;
+          color: #1d4ed8;
+          font-size: 12px;
+          line-height: 1.45;
+          font-weight: 600;
+        }
+
         .events-switch-wrap {
           position: relative;
           display: inline-flex;
@@ -3290,6 +3409,16 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
           border-radius: 10px;
           padding: 8px 10px;
           background: #fff;
+        }
+
+        @media (max-width: 720px) {
+          .customer-event-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .customer-event-inline-grid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </Page>
