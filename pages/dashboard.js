@@ -219,6 +219,11 @@ const ui = {
     display: "flex",
     justifyContent: "flex-end",
   },
+  compactPanelShell: {
+    width: "100%",
+    maxWidth: 760,
+    margin: "0 auto",
+  },
   tableHead: {
     textAlign: "left",
     padding: "13px 10px",
@@ -807,43 +812,45 @@ export default function Dashboard() {
   );
 
   const appPanel = (
-    <LegacyCard sectioned>
-      <FormLayout>
-        <TextField
-          label="Signup Points"
-          type="number"
-          autoComplete="off"
-          value={appConfig.signup}
-          onChange={(value) => setAppConfig({ ...appConfig, signup: value })}
-        />
-        <FormLayout.Group>
+    <div style={ui.compactPanelShell}>
+      <LegacyCard sectioned>
+        <FormLayout>
           <TextField
-            label="Referral Points"
+            label="Signup Points"
             type="number"
             autoComplete="off"
-            value={appConfig.referral}
-            onChange={(value) => setAppConfig({ ...appConfig, referral: value })}
+            value={appConfig.signup}
+            onChange={(value) => setAppConfig({ ...appConfig, signup: value })}
           />
+          <FormLayout.Group>
+            <TextField
+              label="Referral Points"
+              type="number"
+              autoComplete="off"
+              value={appConfig.referral}
+              onChange={(value) => setAppConfig({ ...appConfig, referral: value })}
+            />
+            <TextField
+              label="Birthday Points"
+              type="number"
+              autoComplete="off"
+              value={appConfig.birthday}
+              onChange={(value) => setAppConfig({ ...appConfig, birthday: value })}
+            />
+          </FormLayout.Group>
           <TextField
-            label="Birthday Points"
+            label="Anniversary Points"
             type="number"
             autoComplete="off"
-            value={appConfig.birthday}
-            onChange={(value) => setAppConfig({ ...appConfig, birthday: value })}
+            value={appConfig.anniversary}
+            onChange={(value) => setAppConfig({ ...appConfig, anniversary: value })}
           />
-        </FormLayout.Group>
-        <TextField
-          label="Anniversary Points"
-          type="number"
-          autoComplete="off"
-          value={appConfig.anniversary}
-          onChange={(value) => setAppConfig({ ...appConfig, anniversary: value })}
-        />
-        <div style={ui.actionRow}>
-          <Button variant="primary" onClick={saveAllConfig}>Save</Button>
-        </div>
-      </FormLayout>
-    </LegacyCard>
+          <div style={ui.actionRow}>
+            <Button variant="primary" onClick={saveAllConfig}>Save</Button>
+          </div>
+        </FormLayout>
+      </LegacyCard>
+    </div>
   );
 
   const pointsPanel = (
