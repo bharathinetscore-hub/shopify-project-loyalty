@@ -809,14 +809,14 @@ export default function Dashboard() {
   const appPanel = (
     <LegacyCard sectioned>
       <FormLayout>
-        <TextField
-          label="Signup Points"
-          type="number"
-          autoComplete="off"
-          value={appConfig.signup}
-          onChange={(value) => setAppConfig({ ...appConfig, signup: value })}
-        />
         <FormLayout.Group>
+          <TextField
+            label="Signup Points"
+            type="number"
+            autoComplete="off"
+            value={appConfig.signup}
+            onChange={(value) => setAppConfig({ ...appConfig, signup: value })}
+          />
           <TextField
             label="Referral Points"
             type="number"
@@ -824,6 +824,8 @@ export default function Dashboard() {
             value={appConfig.referral}
             onChange={(value) => setAppConfig({ ...appConfig, referral: value })}
           />
+        </FormLayout.Group>
+        <FormLayout.Group>
           <TextField
             label="Birthday Points"
             type="number"
@@ -831,14 +833,14 @@ export default function Dashboard() {
             value={appConfig.birthday}
             onChange={(value) => setAppConfig({ ...appConfig, birthday: value })}
           />
+          <TextField
+            label="Anniversary Points"
+            type="number"
+            autoComplete="off"
+            value={appConfig.anniversary}
+            onChange={(value) => setAppConfig({ ...appConfig, anniversary: value })}
+          />
         </FormLayout.Group>
-        <TextField
-          label="Anniversary Points"
-          type="number"
-          autoComplete="off"
-          value={appConfig.anniversary}
-          onChange={(value) => setAppConfig({ ...appConfig, anniversary: value })}
-        />
         <div style={ui.actionRow}>
           <Button variant="primary" onClick={saveAllConfig}>Save</Button>
         </div>
