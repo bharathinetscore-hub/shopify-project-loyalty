@@ -302,6 +302,47 @@ const ui = {
   alertWrap: {
     marginBottom: 16,
   },
+  noticeStrip: {
+    position: "fixed",
+    top: 14,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "min(960px, calc(100vw - 32px))",
+    minHeight: 56,
+    borderRadius: 10,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    padding: "14px 18px",
+    color: "#ffffff",
+    boxShadow: "0 18px 34px rgba(15, 23, 42, 0.24)",
+    zIndex: 9999,
+  },
+  noticeStripSuccess: {
+    background: "linear-gradient(90deg, #15803d 0%, #16a34a 100%)",
+    border: "1px solid #166534",
+  },
+  noticeStripCritical: {
+    background: "linear-gradient(90deg, #b91c1c 0%, #dc2626 100%)",
+    border: "1px solid #991b1b",
+  },
+  noticeText: {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 700,
+    letterSpacing: "0.1px",
+  },
+  noticeDismiss: {
+    border: "1px solid rgba(255,255,255,0.28)",
+    background: "rgba(255,255,255,0.12)",
+    color: "#ffffff",
+    borderRadius: 8,
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
 };
 
 export default function Dashboard() {
@@ -1045,6 +1086,20 @@ export default function Dashboard() {
   return (
     <div style={ui.shell} className="dashboard-shell">
       <div className="dashboard-frame">
+        {notice.message && (
+          <div
+            style={{
+              ...ui.noticeStrip,
+              ...(notice.tone === "critical" ? ui.noticeStripCritical : ui.noticeStripSuccess),
+            }}
+          >
+            <p style={ui.noticeText}>{notice.message}</p>
+            <button type="button" style={ui.noticeDismiss} onClick={clearNotice}>
+              Close
+            </button>
+          </div>
+        )}
+
         <Page
         >
           <div style={ui.hero}>
@@ -1067,14 +1122,6 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-
-          {notice.message && (
-            <div style={ui.alertWrap}>
-              <Banner tone={notice.tone} onDismiss={clearNotice}>
-                <p>{notice.message}</p>
-              </Banner>
-            </div>
-          )}
 
           {typeof daysLeft === "number" && (
             <div style={ui.alertWrap}>
