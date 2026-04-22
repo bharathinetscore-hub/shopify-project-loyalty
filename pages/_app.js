@@ -3,6 +3,8 @@ import { AppProvider } from "@shopify/polaris";
 import createApp from "@shopify/app-bridge";
 import { NavigationMenu } from "@shopify/app-bridge/actions";
 import * as AppLink from "@shopify/app-bridge/actions/Link/AppLink";
+import * as History from "@shopify/app-bridge/actions/Navigation/History";
+import * as Redirect from "@shopify/app-bridge/actions/Navigation/Redirect";
 import "@shopify/polaris/build/esm/styles.css";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
@@ -114,10 +116,34 @@ function MyApp({ Component, pageProps }) {
         AppLink.create(app, { label: "Email Template", destination: "/loyalty-email-template" }),
       ];
       NavigationMenu.create(app, { items });
+
+      const navigateToAppPath = (payload) => {
+        const path = payload?.path || payload?.destination?.path || payload?.destination || "";
+        if (!path || typeof path !== "string") return;
+        router.replace(path);
+      };
+
+      const unsubscribeRedirect = app.subscribe(Redirect.Action.APP, ({ payload }) => {
+        navigateToAppPath(payload);
+      });
+
+      const unsubscribeHistoryPush = app.subscribe(History.Action.PUSH, ({ payload }) => {
+        navigateToAppPath(payload);
+      });
+
+      const unsubscribeHistoryReplace = app.subscribe(History.Action.REPLACE, ({ payload }) => {
+        navigateToAppPath(payload);
+      });
+
+      return () => {
+        unsubscribeRedirect?.();
+        unsubscribeHistoryPush?.();
+        unsubscribeHistoryReplace?.();
+      };
     } catch (err) {
       console.error("Navigation menu init error:", err);
     }
-  }, [config]);
+  }, [config, router]);
 
   if (!config && !hostMissing) {
     return <p style={{ padding: 20 }}>Loading App...</p>;
