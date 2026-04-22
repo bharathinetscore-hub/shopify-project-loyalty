@@ -16,6 +16,12 @@ function toBoolean(value, fallback = true) {
   return fallback;
 }
 
+function cleanNullableText(value) {
+  if (value === undefined || value === null) return null;
+  const next = String(value).trim();
+  return next === "" ? null : next;
+}
+
 async function ensureEventsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS netst_events_table (
@@ -35,10 +41,56 @@ async function ensureEventsTable() {
   `);
 }
 
+async function ensureFeaturesTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS netst_features_table (
+      id SERIAL PRIMARY KEY,
+      loyalty_eligible BOOLEAN DEFAULT FALSE,
+      product_sharing_through_email BOOLEAN DEFAULT FALSE,
+      enable_referral_code_use_at_signup BOOLEAN DEFAULT FALSE,
+      login_to_see_points BOOLEAN DEFAULT FALSE,
+      enable_redeem_history BOOLEAN DEFAULT FALSE,
+      enable_refer_friend BOOLEAN DEFAULT FALSE,
+      enable_gift_certificate_generation BOOLEAN DEFAULT FALSE,
+      enable_tiers_info BOOLEAN DEFAULT FALSE,
+      enable_profile_info BOOLEAN DEFAULT FALSE,
+      enable_points_redeem_on_checkout BOOLEAN DEFAULT FALSE,
+      my_account_tab_heading TEXT,
+      loyalty_points_earned_label TEXT,
+      redeem_history_label TEXT,
+      refer_friend_label TEXT,
+      gift_card_label TEXT,
+      tiers_label TEXT,
+      update_profile_label TEXT,
+      product_redeem_label TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    ALTER TABLE netst_features_table
+    ADD COLUMN IF NOT EXISTS loyalty_points_earned_label TEXT
+  `);
+}
+
 async function loadConfigRow() {
   const result = await pool.query(`
     SELECT *
     FROM netst_loyalty_config_table
+    ORDER BY id ASC
+    LIMIT 1
+  `);
+
+  return result.rows[0] || null;
+}
+
+async function loadFeaturesRow() {
+  await ensureFeaturesTable();
+
+  const result = await pool.query(`
+    SELECT *
+    FROM netst_features_table
     ORDER BY id ASC
     LIMIT 1
   `);
@@ -64,6 +116,185 @@ async function loadEventsRows() {
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   }));
+}
+
+async function saveFeatures(featuresInput) {
+  await ensureFeaturesTable();
+
+  const existing = await pool.query(
+    "SELECT * FROM netst_features_table ORDER BY id ASC LIMIT 1"
+  );
+  const current = existing.rows[0] || {};
+
+  const finalData = {
+    loyalty_eligible: toBoolean(
+      featuresInput?.loyaltyEligible ?? featuresInput?.loyalty_eligible,
+      current.loyalty_eligible ?? false
+    ),
+    product_sharing_through_email: toBoolean(
+      featuresInput?.productSharingThroughEmail ?? featuresInput?.product_sharing_through_email,
+      current.product_sharing_through_email ?? false
+    ),
+    enable_referral_code_use_at_signup: toBoolean(
+      featuresInput?.enableReferralCodeUseAtSignup ?? featuresInput?.enable_referral_code_use_at_signup,
+      current.enable_referral_code_use_at_signup ?? false
+    ),
+    login_to_see_points: toBoolean(
+      featuresInput?.loginToSeePoints ?? featuresInput?.login_to_see_points,
+      current.login_to_see_points ?? false
+    ),
+    enable_redeem_history: toBoolean(
+      featuresInput?.enableRedeemHistory ?? featuresInput?.enable_redeem_history,
+      current.enable_redeem_history ?? false
+    ),
+    enable_refer_friend: toBoolean(
+      featuresInput?.enableReferFriend ?? featuresInput?.enable_refer_friend,
+      current.enable_refer_friend ?? false
+    ),
+    enable_gift_certificate_generation: toBoolean(
+      featuresInput?.enableGiftCertificateGeneration ?? featuresInput?.enable_gift_certificate_generation,
+      current.enable_gift_certificate_generation ?? false
+    ),
+    enable_tiers_info: toBoolean(
+      featuresInput?.enableTiersInfo ?? featuresInput?.enable_tiers_info,
+      current.enable_tiers_info ?? false
+    ),
+    enable_profile_info: toBoolean(
+      featuresInput?.enableProfileInfo ?? featuresInput?.enable_profile_info,
+      current.enable_profile_info ?? false
+    ),
+    enable_points_redeem_on_checkout: toBoolean(
+      featuresInput?.enablePointsRedeemOnCheckout ?? featuresInput?.enable_points_redeem_on_checkout,
+      current.enable_points_redeem_on_checkout ?? false
+    ),
+    my_account_tab_heading: cleanNullableText(
+      featuresInput?.myAccountTabHeading ?? featuresInput?.my_account_tab_heading ?? current.my_account_tab_heading
+    ),
+    loyalty_points_earned_label: cleanNullableText(
+      featuresInput?.loyaltyPointsEarnedLabel ??
+        featuresInput?.loyalty_points_earned_label ??
+        current.loyalty_points_earned_label
+    ),
+    redeem_history_label: cleanNullableText(
+      featuresInput?.redeemHistoryLabel ?? featuresInput?.redeem_history_label ?? current.redeem_history_label
+    ),
+    refer_friend_label: cleanNullableText(
+      featuresInput?.referFriendLabel ?? featuresInput?.refer_friend_label ?? current.refer_friend_label
+    ),
+    gift_card_label: cleanNullableText(
+      featuresInput?.giftCardLabel ?? featuresInput?.gift_card_label ?? current.gift_card_label
+    ),
+    tiers_label: cleanNullableText(featuresInput?.tiersLabel ?? featuresInput?.tiers_label ?? current.tiers_label),
+    update_profile_label: cleanNullableText(
+      featuresInput?.updateProfileLabel ?? featuresInput?.update_profile_label ?? current.update_profile_label
+    ),
+    product_redeem_label: cleanNullableText(
+      featuresInput?.productRedeemLabel ?? featuresInput?.product_redeem_label ?? current.product_redeem_label
+    ),
+  };
+
+  if (!existing.rows.length) {
+    await pool.query(
+      `
+      INSERT INTO netst_features_table (
+        loyalty_eligible,
+        product_sharing_through_email,
+        enable_referral_code_use_at_signup,
+        login_to_see_points,
+        enable_redeem_history,
+        enable_refer_friend,
+        enable_gift_certificate_generation,
+        enable_tiers_info,
+        enable_profile_info,
+        enable_points_redeem_on_checkout,
+        my_account_tab_heading,
+        loyalty_points_earned_label,
+        redeem_history_label,
+        refer_friend_label,
+        gift_card_label,
+        tiers_label,
+        update_profile_label,
+        product_redeem_label,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+        $11,$12,$13,$14,$15,$16,$17,$18,
+        NOW(),NOW()
+      )
+      `,
+      [
+        finalData.loyalty_eligible,
+        finalData.product_sharing_through_email,
+        finalData.enable_referral_code_use_at_signup,
+        finalData.login_to_see_points,
+        finalData.enable_redeem_history,
+        finalData.enable_refer_friend,
+        finalData.enable_gift_certificate_generation,
+        finalData.enable_tiers_info,
+        finalData.enable_profile_info,
+        finalData.enable_points_redeem_on_checkout,
+        finalData.my_account_tab_heading,
+        finalData.loyalty_points_earned_label,
+        finalData.redeem_history_label,
+        finalData.refer_friend_label,
+        finalData.gift_card_label,
+        finalData.tiers_label,
+        finalData.update_profile_label,
+        finalData.product_redeem_label,
+      ]
+    );
+    return;
+  }
+
+  await pool.query(
+    `
+    UPDATE netst_features_table
+    SET
+      loyalty_eligible = $1,
+      product_sharing_through_email = $2,
+      enable_referral_code_use_at_signup = $3,
+      login_to_see_points = $4,
+      enable_redeem_history = $5,
+      enable_refer_friend = $6,
+      enable_gift_certificate_generation = $7,
+      enable_tiers_info = $8,
+      enable_profile_info = $9,
+      enable_points_redeem_on_checkout = $10,
+      my_account_tab_heading = $11,
+      loyalty_points_earned_label = $12,
+      redeem_history_label = $13,
+      refer_friend_label = $14,
+      gift_card_label = $15,
+      tiers_label = $16,
+      update_profile_label = $17,
+      product_redeem_label = $18,
+      updated_at = NOW()
+    WHERE id = $19
+    `,
+    [
+      finalData.loyalty_eligible,
+      finalData.product_sharing_through_email,
+      finalData.enable_referral_code_use_at_signup,
+      finalData.login_to_see_points,
+      finalData.enable_redeem_history,
+      finalData.enable_refer_friend,
+      finalData.enable_gift_certificate_generation,
+      finalData.enable_tiers_info,
+      finalData.enable_profile_info,
+      finalData.enable_points_redeem_on_checkout,
+      finalData.my_account_tab_heading,
+      finalData.loyalty_points_earned_label,
+      finalData.redeem_history_label,
+      finalData.refer_friend_label,
+      finalData.gift_card_label,
+      finalData.tiers_label,
+      finalData.update_profile_label,
+      finalData.product_redeem_label,
+      current.id,
+    ]
+  );
 }
 
 async function upsertEvent(eventInput) {
@@ -192,6 +423,7 @@ function normalizeRequestPayload(body) {
     : raw.event && typeof raw.event === "object"
       ? [raw.event]
       : [];
+  const features = raw.features && typeof raw.features === "object" ? raw.features : null;
 
   const config = {
     signup: configInput.signup ?? configInput.customer_signup_points,
@@ -208,7 +440,7 @@ function normalizeRequestPayload(body) {
     facebook: configInput.facebook ?? configInput.facebook_share_points,
   };
 
-  return { config, events };
+  return { config, events, features };
 }
 
 function normalizeDeletePayload(body) {
@@ -219,8 +451,12 @@ function normalizeDeletePayload(body) {
 export default async function handler(req, res) {
   if (req.method === "GET") {
     try {
-      const [config, events] = await Promise.all([loadConfigRow(), loadEventsRows()]);
-      return res.status(200).json({ success: true, config, events });
+      const [config, events, features] = await Promise.all([
+        loadConfigRow(),
+        loadEventsRows(),
+        loadFeaturesRow(),
+      ]);
+      return res.status(200).json({ success: true, config, events, features });
     } catch (error) {
       console.error("wp-json/lrp/v1/config GET error:", error);
       return res.status(500).json({ success: false, error: "Failed to load config data" });
@@ -232,7 +468,11 @@ export default async function handler(req, res) {
       await ensureEventsTable();
 
       const deletedEvents = await deleteEvents(normalizeDeletePayload(req.body));
-      const [latestConfig, latestEvents] = await Promise.all([loadConfigRow(), loadEventsRows()]);
+      const [latestConfig, latestEvents, latestFeatures] = await Promise.all([
+        loadConfigRow(),
+        loadEventsRows(),
+        loadFeaturesRow(),
+      ]);
 
       return res.status(200).json({
         success: true,
@@ -240,6 +480,7 @@ export default async function handler(req, res) {
         deletedEvents,
         config: latestConfig,
         events: latestEvents,
+        features: latestFeatures,
       });
     } catch (error) {
       console.error("wp-json/lrp/v1/config delete error:", error);
@@ -257,13 +498,14 @@ export default async function handler(req, res) {
   try {
     await ensureEventsTable();
 
-    const { config, events } = normalizeRequestPayload(req.body);
+    const { config, events, features } = normalizeRequestPayload(req.body);
     const hasConfigPayload = Object.values(config || {}).some((value) => value !== undefined);
+    const hasFeaturesPayload = features && Object.values(features).some((value) => value !== undefined);
 
-    if (!hasConfigPayload && !events.length) {
+    if (!hasConfigPayload && !events.length && !hasFeaturesPayload) {
       return res.status(400).json({
         success: false,
-        error: "Send config fields, events array, or both.",
+        error: "Send config fields, features object, events array, or any combination.",
       });
     }
 
@@ -271,20 +513,30 @@ export default async function handler(req, res) {
       await saveConfig(config);
     }
 
+    if (hasFeaturesPayload) {
+      await saveFeatures(features);
+    }
+
     const savedEvents = [];
     for (const event of events) {
       savedEvents.push(await upsertEvent(event));
     }
 
-    const [latestConfig, latestEvents] = await Promise.all([loadConfigRow(), loadEventsRows()]);
+    const [latestConfig, latestEvents, latestFeatures] = await Promise.all([
+      loadConfigRow(),
+      loadEventsRows(),
+      loadFeaturesRow(),
+    ]);
 
     return res.status(200).json({
       success: true,
       updatedConfig: hasConfigPayload,
+      updatedFeatures: Boolean(hasFeaturesPayload),
       updatedEventsCount: savedEvents.length,
       savedEvents,
       config: latestConfig,
       events: latestEvents,
+      features: latestFeatures,
     });
   } catch (error) {
     console.error("wp-json/lrp/v1/config save error:", error);
