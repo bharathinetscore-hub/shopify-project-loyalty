@@ -1,4 +1,4 @@
-import { Button, LegacyCard, FormLayout, TextField } from "@shopify/polaris";
+import { Button, FormLayout, TextField } from "@shopify/polaris";
 import { useState } from "react";
 import styles from "../styles/Form.module.css";
 
@@ -116,24 +116,20 @@ export function NetsuiteForm() {
 
   return (
     <div className={styles.loginCard}>
-      <LegacyCard>
-        <LegacyCard.Section>
-          <form onSubmit={handleSubmit}>
-            <FormLayout>
-              <TextField label="Auth Code" placeholder="Enter your auth code" value={fields.authCode} onChange={handleChange("authCode")} autoComplete="off" prefix={<FieldIcon type="shield" />} />
-              <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
-              <TextField label="Product Code" placeholder="Enter your product code" value={fields.productCode} onChange={handleChange("productCode")} autoComplete="off" prefix={<FieldIcon type="cube" />} />
-              <TextField label="Account ID" placeholder="Enter your account ID" value={fields.accountId} onChange={handleChange("accountId")} autoComplete="off" prefix={<FieldIcon type="user" />} />
-              <TextField label="License URL" placeholder="Enter your license URL" value={fields.licenseUrl} onChange={handleChange("licenseUrl")} autoComplete="off" prefix={<FieldIcon type="globe" />} />
-              <div className={styles.submitButton}>
-                <Button submit variant="primary" loading={loading} fullWidth>
-                  Login
-                </Button>
-              </div>
-            </FormLayout>
-          </form>
-        </LegacyCard.Section>
-      </LegacyCard>
+      <form onSubmit={handleSubmit}>
+        <FormLayout>
+          <TextField label="Auth Code" placeholder="Enter your auth code" value={fields.authCode} onChange={handleChange("authCode")} autoComplete="off" prefix={<FieldIcon type="shield" />} />
+          <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
+          <TextField label="Product Code" placeholder="Enter your product code" value={fields.productCode} onChange={handleChange("productCode")} autoComplete="off" prefix={<FieldIcon type="cube" />} />
+          <TextField label="Account ID" placeholder="Enter your account ID" value={fields.accountId} onChange={handleChange("accountId")} autoComplete="off" prefix={<FieldIcon type="user" />} />
+          <TextField label="License URL" placeholder="Enter your license URL" value={fields.licenseUrl} onChange={handleChange("licenseUrl")} autoComplete="off" prefix={<FieldIcon type="globe" />} />
+          <div className={styles.submitButton}>
+            <Button submit variant="primary" loading={loading} fullWidth>
+              Login
+            </Button>
+          </div>
+        </FormLayout>
+      </form>
     </div>
   );
 }
@@ -180,22 +176,18 @@ export function LoyaltyForm() {
 
   return (
     <div className={styles.loginCard}>
-      <LegacyCard>
-        <LegacyCard.Section>
-          <form onSubmit={handleSubmit}>
-            <FormLayout>
-              <TextField label="Username" placeholder="Enter your username" value={fields.username} onChange={handleChange("username")} autoComplete="off" prefix={<FieldIcon type="user" />} />
-              <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
-              <TextField label="Product Code" placeholder="Enter your product code" value={fields.productCode} onChange={handleChange("productCode")} autoComplete="off" prefix={<FieldIcon type="cube" />} />
-              <div className={styles.submitButton}>
-                <Button submit variant="primary" loading={loading} fullWidth>
-                  Login
-                </Button>
-              </div>
-            </FormLayout>
-          </form>
-        </LegacyCard.Section>
-      </LegacyCard>
+      <form onSubmit={handleSubmit}>
+        <FormLayout>
+          <TextField label="Username" placeholder="Enter your username" value={fields.username} onChange={handleChange("username")} autoComplete="off" prefix={<FieldIcon type="user" />} />
+          <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
+          <TextField label="Product Code" placeholder="Enter your product code" value={fields.productCode} onChange={handleChange("productCode")} autoComplete="off" prefix={<FieldIcon type="cube" />} />
+          <div className={styles.submitButton}>
+            <Button submit variant="primary" loading={loading} fullWidth>
+              Login
+            </Button>
+          </div>
+        </FormLayout>
+      </form>
     </div>
   );
 }

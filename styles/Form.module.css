@@ -1,7 +1,7 @@
 .pageBg {
   min-height: 100vh;
   background: #f7f8f6;
-  padding: 32px 44px;
+  padding: 34px 44px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -11,7 +11,7 @@
 .mainWrapper {
   width: 100%;
   max-width: 1450px;
-  min-height: 720px;
+  min-height: min(720px, calc(100vh - 68px));
   display: grid;
   grid-template-columns: 36% 64%;
   overflow: hidden;
@@ -24,8 +24,8 @@
 .brandPanel {
   position: relative;
   overflow: hidden;
-  min-height: 720px;
-  padding: 60px 54px;
+  min-height: min(720px, calc(100vh - 68px));
+  padding: clamp(38px, 5.8vh, 60px) 54px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -45,9 +45,9 @@
 }
 
 .brandPanel::before {
-  width: 216px;
-  height: 216px;
-  top: 58px;
+  width: clamp(176px, 16vw, 216px);
+  height: clamp(176px, 16vw, 216px);
+  top: clamp(38px, 5.8vh, 58px);
   left: 50%;
   transform: translateX(-50%);
 }
@@ -62,8 +62,8 @@
 .giftHalo {
   position: relative;
   z-index: 1;
-  width: 206px;
-  height: 206px;
+  width: clamp(164px, 15vw, 206px);
+  height: clamp(164px, 15vw, 206px);
   display: grid;
   place-items: center;
   border: 7px solid rgba(23, 112, 55, 0.06);
@@ -72,8 +72,8 @@
 }
 
 .giftIcon {
-  width: 104px;
-  height: 104px;
+  width: clamp(116px, 10vw, 140px);
+  height: clamp(116px, 10vw, 140px);
   fill: #137335;
 }
 
@@ -84,14 +84,14 @@
 .brandText {
   position: relative;
   z-index: 1;
-  margin-top: 22px;
+  margin-top: clamp(16px, 2.2vh, 22px);
   text-align: center;
   color: #101828;
 }
 
 .brandText h2 {
   margin: 0;
-  font-size: 34px;
+  font-size: clamp(28px, 2.6vw, 34px);
   line-height: 1.15;
   font-weight: 800;
   letter-spacing: 0;
@@ -100,7 +100,7 @@
 .brandText p {
   margin: 6px 0 0;
   color: #137335;
-  font-size: 27px;
+  font-size: clamp(22px, 2.1vw, 27px);
   line-height: 1.2;
   font-weight: 800;
   letter-spacing: 0;
@@ -110,14 +110,14 @@
   display: block;
   width: 66px;
   height: 3px;
-  margin: 30px auto 26px;
+  margin: clamp(18px, 3vh, 30px) auto clamp(16px, 2.6vh, 26px);
   border-radius: 999px;
   background: #137335;
 }
 
 .brandText div {
   color: #111827;
-  font-size: 20px;
+  font-size: clamp(16px, 1.6vw, 20px);
   line-height: 1.55;
   font-weight: 500;
 }
@@ -125,10 +125,10 @@
 .analyticsCard {
   position: absolute;
   z-index: 1;
-  left: 84px;
-  bottom: 104px;
-  width: 306px;
-  height: 142px;
+  left: clamp(38px, 5.8vw, 84px);
+  bottom: clamp(64px, 9vh, 104px);
+  width: clamp(240px, 22vw, 306px);
+  height: clamp(112px, 14vh, 142px);
   border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 18px 36px rgba(23, 112, 55, 0.12);
@@ -142,12 +142,12 @@
 }
 
 .cardTopLine {
-  width: 250px;
+  width: 100%;
   background: #137335;
 }
 
 .cardMutedLine {
-  width: 250px;
+  width: 100%;
   height: 12px;
   margin-top: 14px;
   background: #d9e2dd;
@@ -157,13 +157,13 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 26px;
-  margin-top: 26px;
+  gap: clamp(16px, 2vw, 26px);
+  margin-top: clamp(16px, 2.5vh, 26px);
 }
 
 .pieChart {
-  width: 92px;
-  height: 92px;
+  width: clamp(58px, 7vw, 92px);
+  height: clamp(58px, 7vw, 92px);
   flex: 0 0 auto;
   border-radius: 999px;
   background:
@@ -196,10 +196,10 @@
 
 .lockCircle {
   position: absolute;
-  right: -74px;
-  bottom: -12px;
-  width: 86px;
-  height: 86px;
+  right: clamp(-74px, -5vw, -52px);
+  bottom: clamp(-18px, -1.4vh, -12px);
+  width: clamp(62px, 6.2vw, 86px);
+  height: clamp(62px, 6.2vw, 86px);
   display: grid;
   place-items: center;
   border-radius: 999px;
@@ -207,8 +207,8 @@
 }
 
 .lockCircle svg {
-  width: 40px;
-  height: 40px;
+  width: 46%;
+  height: 46%;
   fill: none;
   stroke: #ffffff;
   stroke-width: 2;
@@ -237,8 +237,8 @@
 
 .formPanel {
   position: relative;
-  min-height: 720px;
-  padding: 64px 114px 42px 98px;
+  min-height: min(720px, calc(100vh - 68px));
+  padding: clamp(44px, 6.2vh, 64px) clamp(70px, 7.8vw, 114px) 42px clamp(74px, 6.8vw, 98px);
   background: #ffffff;
 }
 
@@ -252,7 +252,7 @@
 }
 
 .loginHeader p {
-  margin: 12px 0 32px;
+  margin: 12px 0 clamp(24px, 3.2vh, 32px);
   color: #586070;
   font-size: 18px;
   line-height: 1.35;
@@ -262,8 +262,13 @@
 .radioRow {
   display: flex;
   align-items: center;
-  gap: 94px;
-  margin-bottom: 34px;
+  gap: clamp(42px, 6.4vw, 94px);
+  margin-bottom: clamp(24px, 3.4vh, 34px);
+}
+
+.radioRow :global(.Polaris-RadioButton) {
+  width: 18px;
+  height: 18px;
 }
 
 .radioRow :global(.Polaris-RadioButton__Input:checked + .Polaris-RadioButton__Backdrop) {
@@ -276,25 +281,15 @@
   color: #111827;
   font-size: 16px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .formShell {
   max-width: 720px;
 }
 
-.loginCard :global(.Polaris-LegacyCard) {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.loginCard :global(.Polaris-LegacyCard__Section) {
-  padding: 0;
-}
-
 .loginCard :global(.Polaris-FormLayout) {
-  gap: 22px;
+  gap: clamp(18px, 2.15vh, 22px);
 }
 
 .loginCard :global(.Polaris-Label__Text) {
@@ -304,11 +299,11 @@
 }
 
 .loginCard :global(.Polaris-Connected) {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .loginCard :global(.Polaris-TextField) {
-  min-height: 54px;
+  min-height: clamp(46px, 5.2vh, 54px);
   border-radius: 7px;
   border-color: #d7dde3;
   background: #ffffff;
@@ -325,7 +320,7 @@
 }
 
 .loginCard :global(.Polaris-TextField__Prefix) {
-  height: 54px;
+  height: clamp(46px, 5.2vh, 54px);
   min-width: 62px;
   margin-left: -12px;
   margin-right: 18px;
@@ -337,7 +332,7 @@
 }
 
 .loginCard :global(.Polaris-TextField__Input) {
-  min-height: 54px;
+  min-height: clamp(46px, 5.2vh, 54px);
   color: #1f2937;
   font-size: 16px;
   font-weight: 500;
@@ -370,7 +365,7 @@
 }
 
 .submitButton :global(.Polaris-Button) {
-  min-height: 54px;
+  min-height: clamp(46px, 5.2vh, 54px);
   width: 100%;
   border-radius: 7px;
   background: #137335;
