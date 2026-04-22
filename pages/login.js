@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { RadioButton } from "@shopify/polaris";
 import { NetsuiteForm, LoyaltyForm } from "../components/FormComponents";
 import styles from "../styles/Form.module.css";
 
@@ -22,7 +23,7 @@ function getEmbeddedQueryString() {
 
 export default function Home() {
 
-  const [selected, setSelected] = useState("loyalty");
+  const [selected, setSelected] = useState("netsuite");
   const [checkedLogin, setCheckedLogin] = useState(false);
 
   useEffect(() => {
@@ -88,36 +89,83 @@ export default function Home() {
   return (
     <div className={styles.pageBg}>
       <div className={styles.mainWrapper}>
+        <div className={styles.brandPanel} aria-hidden="true">
+          <div className={styles.giftHalo}>
+            <svg className={styles.giftIcon} viewBox="0 0 120 120" role="img">
+              <path d="M24 45h72v16H24z" />
+              <path d="M31 61h58v39H31z" />
+              <path d="M58 45v55" />
+              <path d="M60 44c-13-3-25-13-18-23 8-12 20 5 18 23Z" />
+              <path d="M60 44c13-3 25-13 18-23-8-12-20 5-18 23Z" />
+              <circle cx="86" cy="78" r="18" />
+              <path className={styles.starPath} d="m86 67 3.5 7 7.7 1.1-5.6 5.5 1.3 7.7-6.9-3.6-6.9 3.6 1.3-7.7-5.6-5.5 7.7-1.1Z" />
+            </svg>
+          </div>
 
-        <h1 className={styles.loginTitle}>Login User Account</h1>
+          <div className={styles.brandText}>
+            <h2>NetScore</h2>
+            <p>Loyalty Rewards</p>
+            <span />
+            <div>
+              Reward customers.<br />
+              Build loyalty.<br />
+              Grow your business.
+            </div>
+          </div>
 
-        <div className={styles.radioRow}>
+          <div className={styles.analyticsCard}>
+            <div className={styles.cardTopLine} />
+            <div className={styles.cardMutedLine} />
+            <div className={styles.chartRow}>
+              <div className={styles.pieChart} />
+              <div className={styles.statBars}>
+                <i />
+                <i />
+                <i />
+              </div>
+              <div className={styles.lockCircle}>
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 11V8a5 5 0 0 1 10 0v3" />
+                  <rect x="5" y="11" width="14" height="10" rx="2" />
+                  <path d="M12 15v2" />
+                </svg>
+              </div>
+            </div>
+          </div>
 
-          <label className={styles.radioLabel}>
-            <input
-              type="radio"
-              name="loginType"
-              checked={selected === "netsuite"}
-              onChange={() => setSelected("netsuite")}
-            />
-            Existing NetSuite Customer
-          </label>
-
-          <label className={styles.radioLabel}>
-            <input
-              type="radio"
-              name="loginType"
-              checked={selected === "loyalty"}
-              onChange={() => setSelected("loyalty")}
-            />
-            Existing Rental Customer
-          </label>
-
+          <div className={`${styles.dotGrid} ${styles.dotGridLeft}`} />
         </div>
 
-        {selected === "netsuite" && hasNetsuiteForm && <NetsuiteForm />}
-        {selected === "loyalty" && hasLoyaltyForm && <LoyaltyForm />}
+        <div className={styles.formPanel}>
+          <div className={`${styles.dotGrid} ${styles.dotGridRight}`} />
+          <div className={styles.loginHeader}>
+            <h1 className={styles.loginTitle}>Login User Account</h1>
+            <p>Please enter your credentials</p>
+          </div>
 
+          <div className={styles.radioRow}>
+            <RadioButton
+              label="Existing NetSuite Customer"
+              checked={selected === "netsuite"}
+              id="netsuite-login"
+              name="loginType"
+              onChange={() => setSelected("netsuite")}
+            />
+
+            <RadioButton
+              label="Existing Rental Customer"
+              checked={selected === "loyalty"}
+              id="loyalty-login"
+              name="loginType"
+              onChange={() => setSelected("loyalty")}
+            />
+          </div>
+
+          <div className={styles.formShell}>
+            {selected === "netsuite" && hasNetsuiteForm && <NetsuiteForm />}
+            {selected === "loyalty" && hasLoyaltyForm && <LoyaltyForm />}
+          </div>
+        </div>
       </div>
     </div>
   );
