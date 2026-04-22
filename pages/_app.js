@@ -5,6 +5,7 @@ import { NavigationMenu } from "@shopify/app-bridge/actions";
 import * as AppLink from "@shopify/app-bridge/actions/Link/AppLink";
 import "@shopify/polaris/build/esm/styles.css";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 
 function isLikelyHostParam(value) {
   if (!value) return false;
@@ -13,6 +14,7 @@ function isLikelyHostParam(value) {
 }
 
 function MyApp({ Component, pageProps }) {
+  const router = useRouter();
   const [config, setConfig] = useState(null);
   const [hostMissing, setHostMissing] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
@@ -63,7 +65,26 @@ function MyApp({ Component, pageProps }) {
     if (typeof window === "undefined") {
       return;
     }
-  }, []);
+
+    let lastPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    const syncExternalRouteChange = () => {
+      const nextPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const routerPath = router.asPath || "";
+
+      if (nextPath === lastPath || nextPath === routerPath) {
+        lastPath = nextPath;
+        return;
+      }
+
+      lastPath = nextPath;
+      router.replace(nextPath);
+    };
+
+    const pollId = window.setInterval(syncExternalRouteChange, 200);
+
+    return () => window.clearInterval(pollId);
+  }, [router]);
 
   useEffect(() => {
     if (!shopDomain) return;
