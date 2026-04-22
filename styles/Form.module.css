@@ -12,8 +12,10 @@
   width: 100%;
   max-width: 1450px;
   min-height: min(720px, calc(100vh - 68px));
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: 36% 64%;
+  align-items: stretch;
   overflow: hidden;
   border: 1px solid #dfe7df;
   border-radius: 18px;
@@ -25,10 +27,12 @@
   position: relative;
   overflow: hidden;
   min-height: min(720px, calc(100vh - 68px));
+  box-sizing: border-box;
   padding: clamp(38px, 5.8vh, 60px) 54px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   background:
     radial-gradient(circle at 48% 8%, rgba(214, 232, 219, 0.78), transparent 23%),
     radial-gradient(circle at 24% 80%, rgba(225, 239, 230, 0.9), transparent 24%),
@@ -85,6 +89,7 @@
   position: relative;
   z-index: 1;
   margin-top: clamp(16px, 2.2vh, 22px);
+  margin-bottom: clamp(22px, 3vh, 34px);
   text-align: center;
   color: #101828;
 }
@@ -123,12 +128,17 @@
 }
 
 .analyticsCard {
-  position: absolute;
+  position: relative;
   z-index: 1;
-  left: clamp(38px, 5.8vw, 84px);
-  bottom: clamp(64px, 9vh, 104px);
+  left: auto;
+  bottom: auto;
+  flex: 0 0 auto;
+  margin-top: auto;
+  margin-bottom: clamp(8px, 2vh, 24px);
   width: clamp(240px, 22vw, 306px);
   height: clamp(112px, 14vh, 142px);
+  max-width: calc(100% - 28px);
+  box-sizing: border-box;
   border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 18px 36px rgba(23, 112, 55, 0.12);
@@ -238,6 +248,7 @@
 .formPanel {
   position: relative;
   min-height: min(720px, calc(100vh - 68px));
+  box-sizing: border-box;
   padding: clamp(44px, 6.2vh, 64px) clamp(70px, 7.8vw, 114px) 42px clamp(74px, 6.8vw, 98px);
   background: #ffffff;
 }
@@ -528,7 +539,7 @@
   }
 
   .analyticsCard {
-    left: 48px;
+    width: clamp(230px, 26vw, 292px);
   }
 }
 
