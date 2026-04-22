@@ -674,6 +674,8 @@ export default function Dashboard() {
   };
 
   const saveAllConfig = async () => {
+    if (user?.type === "netsuite") return;
+
     clearNotice();
 
     try {
@@ -697,6 +699,8 @@ export default function Dashboard() {
   };
 
   const addTier = () => {
+    if (user?.type === "netsuite") return;
+
     setTiers((prev) => {
       const lastTier = prev[prev.length - 1];
       if (lastTier?.isNew) {
@@ -719,12 +723,16 @@ export default function Dashboard() {
   };
 
   const updateTier = (index, field, value) => {
+    if (user?.type === "netsuite") return;
+
     const updated = [...tiers];
     updated[index][field] = value;
     setTiers(updated);
   };
 
   const saveTiers = async () => {
+    if (user?.type === "netsuite") return;
+
     clearNotice();
 
     try {
@@ -797,6 +805,8 @@ export default function Dashboard() {
     );
   }
 
+  const isNetSuiteUser = user?.type === "netsuite";
+
   const userPanel = (
     <LegacyCard sectioned>
       <div style={ui.userGrid}>
@@ -856,6 +866,7 @@ export default function Dashboard() {
             type="number"
             autoComplete="off"
             value={appConfig.signup}
+            disabled={isNetSuiteUser}
             onChange={(value) => setAppConfig({ ...appConfig, signup: value })}
           />
           <TextField
@@ -863,6 +874,7 @@ export default function Dashboard() {
             type="number"
             autoComplete="off"
             value={appConfig.referral}
+            disabled={isNetSuiteUser}
             onChange={(value) => setAppConfig({ ...appConfig, referral: value })}
           />
         </FormLayout.Group>
@@ -872,6 +884,7 @@ export default function Dashboard() {
             type="number"
             autoComplete="off"
             value={appConfig.birthday}
+            disabled={isNetSuiteUser}
             onChange={(value) => setAppConfig({ ...appConfig, birthday: value })}
           />
           <TextField
@@ -879,12 +892,15 @@ export default function Dashboard() {
             type="number"
             autoComplete="off"
             value={appConfig.anniversary}
+            disabled={isNetSuiteUser}
             onChange={(value) => setAppConfig({ ...appConfig, anniversary: value })}
           />
         </FormLayout.Group>
-        <div style={ui.actionRow}>
-          <Button variant="primary" onClick={saveAllConfig}>Save</Button>
-        </div>
+        {!isNetSuiteUser && (
+          <div style={ui.actionRow}>
+            <Button variant="primary" onClick={saveAllConfig}>Save</Button>
+          </div>
+        )}
       </FormLayout>
     </LegacyCard>
   );
@@ -899,6 +915,7 @@ export default function Dashboard() {
             autoComplete="off"
             value={pointsConfig.pointValue}
             helpText="Points Earn on Every One Dollar"
+            disabled={isNetSuiteUser}
             onChange={(value) => setPointsConfig({ ...pointsConfig, pointValue: value })}
           />
 
@@ -908,6 +925,7 @@ export default function Dashboard() {
             autoComplete="off"
             value={pointsConfig.equivalent}
             helpText="Points Value in One Doller"
+            disabled={isNetSuiteUser}
             onChange={(value) => setPointsConfig({ ...pointsConfig, equivalent: value })}
           />
         </FormLayout.Group>
@@ -919,6 +937,7 @@ export default function Dashboard() {
             autoComplete="off"
             value={pointsConfig.pointsExpiry}
             helpText="Leave empty for no expiration."
+            disabled={isNetSuiteUser}
             onChange={(value) => setPointsConfig({ ...pointsConfig, pointsExpiry: value })}
           />
 
@@ -928,6 +947,7 @@ export default function Dashboard() {
             autoComplete="off"
             value={pointsConfig.giftcardExpiry}
             helpText="Leave empty for no expiry."
+            disabled={isNetSuiteUser}
             onChange={(value) => setPointsConfig({ ...pointsConfig, giftcardExpiry: value })}
           />
         </FormLayout.Group>
@@ -939,14 +959,17 @@ export default function Dashboard() {
             autoComplete="off"
             value={pointsConfig.netsuiteEndpoint}
             helpText="Single NetSuite endpoint used to send Gift Card and Order data."
+            disabled={isNetSuiteUser}
             onChange={(value) => setPointsConfig({ ...pointsConfig, netsuiteEndpoint: value })}
           />
           <div />
         </FormLayout.Group>
 
-        <div style={ui.actionRow}>
-          <Button variant="primary" onClick={saveAllConfig}>Save</Button>
-        </div>
+        {!isNetSuiteUser && (
+          <div style={ui.actionRow}>
+            <Button variant="primary" onClick={saveAllConfig}>Save</Button>
+          </div>
+        )}
       </FormLayout>
     </LegacyCard>
   );
@@ -960,13 +983,16 @@ export default function Dashboard() {
             type="number"
             autoComplete="off"
             value={threshold}
+            disabled={isNetSuiteUser}
             onChange={setThreshold}
           />
           <div />
         </FormLayout.Group>
-        <div style={ui.actionRow}>
-          <Button variant="primary" onClick={saveAllConfig}>Save</Button>
-        </div>
+        {!isNetSuiteUser && (
+          <div style={ui.actionRow}>
+            <Button variant="primary" onClick={saveAllConfig}>Save</Button>
+          </div>
+        )}
       </FormLayout>
     </LegacyCard>
   );
@@ -1021,6 +1047,7 @@ export default function Dashboard() {
                     label={`Tier Name ${index + 1}`}
                     autoComplete="off"
                     value={tier.name}
+                    disabled={isNetSuiteUser}
                     onChange={(value) => updateTier(index, "name", value)}
                   />
                 </td>
@@ -1031,6 +1058,7 @@ export default function Dashboard() {
                     type="number"
                     autoComplete="off"
                     value={String(tier.threshold)}
+                    disabled={isNetSuiteUser}
                     onChange={(value) => updateTier(index, "threshold", value)}
                   />
                 </td>
@@ -1041,6 +1069,7 @@ export default function Dashboard() {
                     type="number"
                     autoComplete="off"
                     value={String(tier.points)}
+                    disabled={isNetSuiteUser}
                     onChange={(value) => updateTier(index, "points", value)}
                   />
                 </td>
@@ -1054,13 +1083,15 @@ export default function Dashboard() {
                         ? String(nextTierLevel)
                         : String(tier.level)
                     }
-                    readOnly
+                    readOnly={!isNetSuiteUser}
+                    disabled={isNetSuiteUser}
                   />
                 </td>
                 <td style={{ ...ui.tableCell, textAlign: "center" }}>
                   <Checkbox
                     label=""
                     checked={!!tier.active}
+                    disabled={isNetSuiteUser}
                     onChange={(value) => updateTier(index, "active", value)}
                   />
                 </td>
@@ -1070,12 +1101,14 @@ export default function Dashboard() {
         </table>
       </div>
 
-      <div style={ui.tierActions}>
-        <Button onClick={addTier}>
-          {tiers[tiers.length - 1]?.isNew ? "Hide Tier" : "Add Tier"}
-        </Button>
-        <Button variant="primary" onClick={saveTiers}>Save</Button>
-      </div>
+      {!isNetSuiteUser && (
+        <div style={ui.tierActions}>
+          <Button onClick={addTier}>
+            {tiers[tiers.length - 1]?.isNew ? "Hide Tier" : "Add Tier"}
+          </Button>
+          <Button variant="primary" onClick={saveTiers}>Save</Button>
+        </div>
+      )}
     </LegacyCard>
   );
 
