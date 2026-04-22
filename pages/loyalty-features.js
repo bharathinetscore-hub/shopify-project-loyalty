@@ -201,6 +201,11 @@ const ui = {
     cursor: "pointer",
     transition: "background 140ms ease",
   },
+  toggleButtonDisabled: {
+    cursor: "not-allowed",
+    opacity: 0.62,
+    filter: "grayscale(0.2)",
+  },
   toggleButtonOn: {
     background: "linear-gradient(120deg, #6fba87, #5aa472)",
     justifyContent: "flex-end",
@@ -354,7 +359,11 @@ export default function LoyaltyFeaturesPage() {
     return planEnd.getTime() < Date.now();
   }, [planEnd]);
 
+  const isNetSuiteUser = user?.type === "netsuite";
+
   async function saveFeaturesConfig() {
+    if (isNetSuiteUser) return;
+
     setNotice({ tone: "success", message: "" });
     try {
       const res = await fetch("/api/config/save-features", {
@@ -411,11 +420,16 @@ export default function LoyaltyFeaturesPage() {
             role="switch"
             aria-checked={checked}
             aria-label={label}
+            disabled={isNetSuiteUser}
             style={{
               ...ui.toggleButton,
               ...(checked ? ui.toggleButtonOn : ui.toggleButtonOff),
+              ...(isNetSuiteUser ? ui.toggleButtonDisabled : {}),
             }}
-            onClick={() => onChange(!checked)}
+            onClick={() => {
+              if (isNetSuiteUser) return;
+              onChange(!checked);
+            }}
           >
             <span style={ui.toggleKnob} />
           </button>
@@ -482,6 +496,7 @@ export default function LoyaltyFeaturesPage() {
                 label="My Account Tab Heading"
                 autoComplete="off"
                 value={featuresConfig.myAccountTabHeading}
+                disabled={isNetSuiteUser}
                 onChange={(value) =>
                   setFeaturesConfig((prev) => ({ ...prev, myAccountTabHeading: value }))
                 }
@@ -491,6 +506,7 @@ export default function LoyaltyFeaturesPage() {
                 label="Loyalty Points Earned"
                 autoComplete="off"
                 value={featuresConfig.loyaltyPointsEarnedLabel}
+                disabled={isNetSuiteUser}
                 onChange={(value) =>
                   setFeaturesConfig((prev) => ({ ...prev, loyaltyPointsEarnedLabel: value }))
                 }
@@ -499,6 +515,7 @@ export default function LoyaltyFeaturesPage() {
                 label="Redeem History"
                 autoComplete="off"
                 value={featuresConfig.redeemHistoryLabel}
+                disabled={isNetSuiteUser}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, redeemHistoryLabel: value }))}
               />
 
@@ -506,12 +523,14 @@ export default function LoyaltyFeaturesPage() {
                 label="Gift Card"
                 autoComplete="off"
                 value={featuresConfig.giftCardLabel}
+                disabled={isNetSuiteUser}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, giftCardLabel: value }))}
               />
               <TextField
                 label="Refer Friend"
                 autoComplete="off"
                 value={featuresConfig.referFriendLabel}
+                disabled={isNetSuiteUser}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, referFriendLabel: value }))}
               />
 
@@ -519,19 +538,23 @@ export default function LoyaltyFeaturesPage() {
                 label="Update Profile"
                 autoComplete="off"
                 value={featuresConfig.updateProfileLabel}
+                disabled={isNetSuiteUser}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, updateProfileLabel: value }))}
               />
               <TextField
                 label="Loyalty Tiers"
                 autoComplete="off"
                 value={featuresConfig.tiersLabel}
+                disabled={isNetSuiteUser}
                 onChange={(value) => setFeaturesConfig((prev) => ({ ...prev, tiersLabel: value }))}
               />
             </div>
 
-            <div style={ui.saveRow}>
-              <Button variant="primary" onClick={saveFeaturesConfig}>Save</Button>
-            </div>
+            {!isNetSuiteUser && (
+              <div style={ui.saveRow}>
+                <Button variant="primary" onClick={saveFeaturesConfig}>Save</Button>
+              </div>
+            )}
           </FormLayout>
         </div>
       </LegacyCard>
