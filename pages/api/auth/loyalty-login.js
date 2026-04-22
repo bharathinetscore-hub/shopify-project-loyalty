@@ -10,6 +10,13 @@ export default async function handler(req, res) {
   try {
     const { licenseKey, username, password } = req.body;
 
+    if (!licenseKey || !username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Username, license key, and password are required",
+      });
+    }
+
     const user = await LmpUser.findByLogin(
       licenseKey,
       username
@@ -19,6 +26,13 @@ export default async function handler(req, res) {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
+      });
+    }
+
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        message: "Password is not configured for this user",
       });
     }
 

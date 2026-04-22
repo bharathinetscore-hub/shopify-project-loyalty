@@ -138,7 +138,7 @@ export function LoyaltyForm() {
   const [fields, setFields] = useState({
     username: "",
     licenseKey: "",
-    productCode: "",
+    password: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -180,7 +180,7 @@ export function LoyaltyForm() {
         <FormLayout>
           <TextField label="Username" placeholder="Enter your username" value={fields.username} onChange={handleChange("username")} autoComplete="off" prefix={<FieldIcon type="user" />} />
           <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
-          <TextField label="Product Code" placeholder="Enter your product code" value={fields.productCode} onChange={handleChange("productCode")} autoComplete="off" prefix={<FieldIcon type="cube" />} />
+          <TextField label="Password" type="password" placeholder="Enter your password" value={fields.password} onChange={handleChange("password")} autoComplete="off" prefix={<FieldIcon type="key" />} />
           <div className={styles.submitButton}>
             <Button submit variant="primary" loading={loading} fullWidth>
               Login
