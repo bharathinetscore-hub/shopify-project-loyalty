@@ -267,14 +267,36 @@
 }
 
 .radioRow :global(.Polaris-RadioButton) {
+  display: block;
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 10px 0 0;
+}
+
+.radioRow :global(.Polaris-RadioButton__Backdrop) {
   width: 18px;
   height: 18px;
+  border: 1.5px solid #98a2b3;
+  background: #ffffff;
 }
 
 .radioRow :global(.Polaris-RadioButton__Input:checked + .Polaris-RadioButton__Backdrop) {
   border-color: #137335;
-  background: #137335;
-  box-shadow: inset 0 0 0 4px #ffffff;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.radioRow :global(.Polaris-RadioButton__Input:checked + .Polaris-RadioButton__Backdrop::before) {
+  width: 8px;
+  height: 8px;
+  background-color: #137335;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.radioRow :global(.Polaris-RadioButton__Input:focus-visible + .Polaris-RadioButton__Backdrop) {
+  outline: 2px solid rgba(19, 115, 53, 0.18);
+  outline-offset: 2px;
 }
 
 .radioRow :global(.Polaris-Choice__Label) {
@@ -305,30 +327,58 @@
 .loginCard :global(.Polaris-TextField) {
   min-height: clamp(46px, 5.2vh, 54px);
   border-radius: 7px;
-  border-color: #d7dde3;
   background: #ffffff;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.loginCard :global(.Polaris-TextField__Backdrop) {
+  border: 1px solid #d7dde3;
+  border-top-color: #d7dde3;
+  border-radius: 7px;
+  background: #ffffff;
+  outline: none;
   box-shadow: none;
 }
 
-.loginCard :global(.Polaris-TextField:hover) {
+.loginCard :global(.Polaris-TextField:hover .Polaris-TextField__Backdrop) {
   border-color: #b7c2ca;
 }
 
-.loginCard :global(.Polaris-TextField:focus-within) {
+.loginCard :global(.Polaris-TextField:focus-within .Polaris-TextField__Backdrop) {
   border-color: #137335;
   box-shadow: 0 0 0 3px rgba(19, 115, 53, 0.12);
+  outline: none;
+}
+
+.loginCard :global(.Polaris-TextField:focus-within .Polaris-TextField__Backdrop::after) {
+  content: none;
+}
+
+.loginCard :global(.Polaris-TextField__Input:focus-visible) {
+  outline: none;
 }
 
 .loginCard :global(.Polaris-TextField__Prefix) {
-  height: clamp(46px, 5.2vh, 54px);
+  align-self: stretch;
+  height: auto;
+  min-height: clamp(46px, 5.2vh, 54px);
   min-width: 62px;
-  margin-left: -12px;
+  margin-left: 0;
   margin-right: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-right: 1px solid #d7dde3;
   background: #f5faf7;
+}
+
+.loginCard :global(.Polaris-TextField:focus-within .Polaris-TextField__Prefix) {
+  border-right-color: rgba(19, 115, 53, 0.22);
+}
+
+.loginCard :global(.Polaris-TextField__InputAndSuffixWrapper) {
+  min-width: 0;
 }
 
 .loginCard :global(.Polaris-TextField__Input) {
