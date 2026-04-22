@@ -1,5 +1,10 @@
 import bcrypt from "bcrypt";
 import LmpUser from "../../../models/LmpUser";
+import pool from "../../../db/db";
+
+function isBcryptHash(value) {
+  return /^\$2[aby]\$\d{2}\$/.test(String(value || ""));
+}
 
 export default async function handler(req, res) {
 
@@ -36,7 +41,26 @@ export default async function handler(req, res) {
       });
     }
 
-    const ok = await bcrypt.compare(password, user.password);
+    let ok = false;
+
+    if (isBcryptHash(user.password)) {
+      ok = await bcrypt.compare(password, user.password);
+    } else {
+      ok = password === user.password;
+
+      if (ok) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await pool.query(
+          `
+          UPDATE "netst-lmp-users"
+          SET password = $1,
+              updated_at = NOW()
+          WHERE id = $2
+          `,
+          [hashedPassword, user.id]
+        );
+      }
+    }
 
     if (!ok) {
       return res.status(401).json({
