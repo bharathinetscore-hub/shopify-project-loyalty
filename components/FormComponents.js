@@ -4,6 +4,20 @@ import styles from "../styles/Form.module.css";
 
 function FieldIcon({ type }) {
   const paths = {
+    eye: (
+      <>
+        <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ),
+    eyeOff: (
+      <>
+        <path d="m3 3 18 18" />
+        <path d="M10.6 10.6A3 3 0 0 0 13.4 13.4" />
+        <path d="M9.9 5.2A10.2 10.2 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-2.3 3.2" />
+        <path d="M6.3 6.8C3.9 8.5 2.5 12 2.5 12s3.5 7 9.5 7a9.8 9.8 0 0 0 4.1-.9" />
+      </>
+    ),
     shield: (
       <>
         <path d="M12 3 5 5.8v5.4c0 4.1 2.8 7.8 7 9.8 4.2-2 7-5.7 7-9.8V5.8L12 3Z" />
@@ -142,6 +156,7 @@ export function LoyaltyForm() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (field) => (value) => {
     setFields((prev) => ({ ...prev, [field]: value }));
@@ -180,7 +195,25 @@ export function LoyaltyForm() {
         <FormLayout>
           <TextField label="Username" placeholder="Enter your username" value={fields.username} onChange={handleChange("username")} autoComplete="off" prefix={<FieldIcon type="user" />} />
           <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
-          <TextField label="Password" type="password" placeholder="Enter your password" value={fields.password} onChange={handleChange("password")} autoComplete="off" prefix={<FieldIcon type="key" />} />
+          <TextField
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            placeholder="Enter your password"
+            value={fields.password}
+            onChange={handleChange("password")}
+            autoComplete="off"
+            prefix={<FieldIcon type="key" />}
+            suffix={
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((value) => !value)}
+              >
+                <FieldIcon type={showPassword ? "eyeOff" : "eye"} />
+              </button>
+            }
+          />
           <div className={styles.submitButton}>
             <Button submit variant="primary" loading={loading} fullWidth>
               Login
