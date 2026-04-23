@@ -35,6 +35,27 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       return cleanText(value).match(/\d+/)?.[0] || "";
     }
 
+    function getCustomerContext() {
+      const analyticsMeta = window.ShopifyAnalytics?.meta || {};
+      const customerId =
+        parseNumericId(window.Shopify?.customer?.id) ||
+        parseNumericId(analyticsMeta?.customer?.id) ||
+        parseNumericId(analyticsMeta?.page?.customerId) ||
+        parseNumericId(window.__st?.cid) ||
+        "";
+
+      const customerEmail =
+        cleanText(window.Shopify?.customer?.email) ||
+        cleanText(analyticsMeta?.customer?.email) ||
+        cleanText(window.__st?.customer_email) ||
+        "";
+
+      return {
+        customerId,
+        customerEmail,
+      };
+    }
+
     function getProductForm() {
       return (
         document.querySelector("form[action*='/cart/add']") ||
@@ -91,6 +112,8 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 
       if (reason === "product_not_found") return "Product not found in loyalty items";
       if (reason === "product_ineligible") return "Product is disabled for loyalty";
+      if (reason === "login_required") return "Login to see loyalty points";
+      if (reason === "customer_ineligible") return "Customer is not eligible for loyalty points";
       if (reason === "loyalty_disabled") return "Loyalty feature is disabled";
       if (reason === "license_expired") return "Loyalty license is expired";
       if (reason === "invalid_product") return "Invalid product data from storefront";
@@ -192,9 +215,12 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       }
 
       try {
+        const customerContext = getCustomerContext();
         const params = new URLSearchParams({
           productId: String(productId),
           productPrice: String(productPrice),
+          customerId: customerContext.customerId,
+          customerEmail: customerContext.customerEmail,
         });
 
         const requestUrl = `${API_BASE}/api/loyalty/get-product-reward-preview?${params.toString()}`;

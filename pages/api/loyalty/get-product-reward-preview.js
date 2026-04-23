@@ -30,6 +30,70 @@ function parseCustomerId(value) {
   return cleanText(value).match(/\d+/)?.[0] || "";
 }
 
+async function ensureCustomersTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS netst_customers_table (
+      id BIGSERIAL PRIMARY KEY,
+      customer_id TEXT NOT NULL UNIQUE,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NULL,
+      customer_eligible_for_loyalty BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    ALTER TABLE netst_customers_table
+    ADD COLUMN IF NOT EXISTS customer_eligible_for_loyalty BOOLEAN NOT NULL DEFAULT false
+  `);
+}
+
+async function loadCustomerEligibility(customerId, customerEmail) {
+  await ensureCustomersTable();
+
+  const parsedCustomerId = parseCustomerId(customerId);
+  if (parsedCustomerId) {
+    const byId = await pool.query(
+      `
+        SELECT customer_eligible_for_loyalty
+        FROM netst_customers_table
+        WHERE (
+          TRIM(COALESCE(customer_id, '')) = TRIM($1)
+          OR regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $1
+        )
+        ORDER BY updated_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      `,
+      [parsedCustomerId]
+    );
+
+    if (byId.rows.length) {
+      return Boolean(byId.rows[0]?.customer_eligible_for_loyalty);
+    }
+  }
+
+  const normalizedEmail = cleanText(customerEmail);
+  if (normalizedEmail) {
+    const byEmail = await pool.query(
+      `
+        SELECT customer_eligible_for_loyalty
+        FROM netst_customers_table
+        WHERE LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($1))
+        ORDER BY updated_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      `,
+      [normalizedEmail]
+    );
+
+    if (byEmail.rows.length) {
+      return Boolean(byEmail.rows[0]?.customer_eligible_for_loyalty);
+    }
+  }
+
+  return null;
+}
+
 async function resolveLicenseStatus() {
   const tables = ['"netst-lmp-users"', '"netst-lmp-netsuite-users"'];
 
@@ -129,6 +193,8 @@ export default async function handler(req, res) {
 
     const productId = parseProductId(getRequestValue(req, "productId"));
     const productPrice = toNumber(getRequestValue(req, "productPrice"), 0);
+    const customerId = parseCustomerId(getRequestValue(req, "customerId"));
+    const customerEmail = cleanText(getRequestValue(req, "customerEmail"));
     if (!productId || productPrice <= 0) {
       return res.status(200).json({
         eligible: false,
@@ -166,6 +232,25 @@ export default async function handler(req, res) {
         eligible: false,
         points: 0,
         reason: "product_ineligible",
+      });
+    }
+
+    const hasCustomerContext = Boolean(customerId || customerEmail);
+    const customerEligible = await loadCustomerEligibility(customerId, customerEmail);
+
+    if (features.loginToSeePoints && !hasCustomerContext) {
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "login_required",
+      });
+    }
+
+    if (hasCustomerContext && customerEligible === false) {
+      return res.status(200).json({
+        eligible: false,
+        points: 0,
+        reason: "customer_ineligible",
       });
     }
 
