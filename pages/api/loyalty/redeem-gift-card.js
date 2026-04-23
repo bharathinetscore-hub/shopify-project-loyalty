@@ -2,6 +2,7 @@ import pool from "../../../db/db";
 import cors from "../../../lib/cors";
 import nodemailer from "nodemailer";
 import { EMAIL_TEMPLATE_KEYS, resolveEmailTemplate } from "../../../lib/email-templates";
+import { sendPointsRedeemedEmail } from "../../../lib/points-email";
 const { getShopAccessToken } = require("../../../lib/shopify-token-store");
 
 function cleanText(value) {
@@ -578,6 +579,16 @@ export default async function handler(req, res) {
       giftAmount,
       expiryDate: shopifyDiscount.endsAt ? shopifyDiscount.endsAt.slice(0, 10) : null,
     });
+
+    await sendPointsRedeemedEmail({
+      recipientEmail: receiverEmail,
+      customerName: cleanText(req.body?.customerName) || "Customer",
+      eventName: giftEvent.name,
+      points: redeemPoints,
+      availablePoints: pointsLeft,
+      amount: giftAmount,
+      comments: "Gift card generated from loyalty points",
+    }).catch((error) => console.error("redeem-gift-card points email error:", error));
 
     return res.status(200).json({
       success: true,

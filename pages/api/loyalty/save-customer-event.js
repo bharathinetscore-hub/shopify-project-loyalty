@@ -1,4 +1,5 @@
 import pool from "../../../db/db";
+import { sendPointsEarnedEmail, sendPointsRedeemedEmail } from "../../../lib/points-email";
 
 function cleanText(value) {
   return String(value || "").trim();
@@ -306,6 +307,35 @@ export default async function handler(req, res) {
 
     const savedCustomer = customerRes.rows[0] || {};
     const savedEvent = insertRes.rows[0] || {};
+    const recipientEmail = cleanText(savedCustomer.customer_email);
+    const customerName = cleanText(savedCustomer.customer_name);
+    const eventNameOut = cleanText(savedEvent.event_name);
+    const availablePointsOut = toNumber(savedCustomer.available_points, 0);
+
+    if (recipientEmail) {
+      const emailPayload = {
+        recipientEmail,
+        customerName,
+        eventName: eventNameOut,
+        availablePoints: availablePointsOut,
+        amount: toNumber(savedEvent.amount, 0),
+        comments,
+      };
+
+      if (toNumber(savedEvent.points_earned, 0) > 0) {
+        await sendPointsEarnedEmail({
+          ...emailPayload,
+          points: toNumber(savedEvent.points_earned, 0),
+        }).catch((error) => console.error("save-customer-event earned email error:", error));
+      }
+
+      if (toNumber(savedEvent.points_redeemed, 0) > 0) {
+        await sendPointsRedeemedEmail({
+          ...emailPayload,
+          points: toNumber(savedEvent.points_redeemed, 0),
+        }).catch((error) => console.error("save-customer-event redeemed email error:", error));
+      }
+    }
 
     return res.status(200).json({
       success: true,

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import pool from "../../../db/db";
+import { sendPointsEarnedEmail, sendPointsRedeemedEmail } from "../../../lib/points-email";
 
 export const config = {
   api: {
@@ -511,6 +512,16 @@ export default async function handler(req, res) {
           totalRedeemed: runningTotalRedeemed,
           available: runningAvailable,
         });
+
+        await sendPointsRedeemedEmail({
+          recipientEmail: receiverEmail,
+          customerName: customerName || "Customer",
+          eventName: checkoutRedeemEvent.name,
+          points: loyaltyRedeemPoints,
+          availablePoints: runningAvailable,
+          amount: loyaltyDiscountAmount,
+          comments: `Applied from checkout loyalty points (${loyaltyRuleId || loyaltyDiscountLabel})`,
+        }).catch((error) => console.error("orders-create redeemed email error:", error));
       }
     }
 
@@ -601,6 +612,16 @@ export default async function handler(req, res) {
       totalRedeemed: runningTotalRedeemed,
       available: runningAvailable,
     });
+
+    await sendPointsEarnedEmail({
+      recipientEmail: receiverEmail,
+      customerName: customerName || "Customer",
+      eventName: eventOne.name,
+      points: pointsEarned,
+      availablePoints: runningAvailable,
+      amount,
+      comments: "",
+    }).catch((error) => console.error("orders-create earned email error:", error));
 
     return res.status(200).send("OK");
   } catch (error) {

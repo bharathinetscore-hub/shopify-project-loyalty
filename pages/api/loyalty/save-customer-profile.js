@@ -1,5 +1,6 @@
 import pool from "../../../db/db";
 import cors from "../../../lib/cors";
+import { sendPointsEarnedEmail } from "../../../lib/points-email";
 
 function cleanText(value) {
   return String(value || "").trim();
@@ -435,6 +436,7 @@ export default async function handler(req, res) {
 
   try {
     await client.query("BEGIN");
+    const pendingEmailNotifications = [];
 
     await ensureFeaturesTable(client);
     await ensureCustomersTable(client);
@@ -646,6 +648,14 @@ export default async function handler(req, res) {
                 name: referredSignupEvent.name,
                 pointsEarned: referralPoints,
               });
+              pendingEmailNotifications.push({
+                recipientEmail: finalCustomerEmail,
+                customerName,
+                eventName: referredSignupEvent.name,
+                points: referralPoints,
+                availablePoints,
+                comments: `Referral code used: ${finalUsedReferralCode}`,
+              });
 
               const referrerEarned = toNumber(referrer.total_earned_points, 0) + referralPoints;
               const referrerRedeemed = toNumber(referrer.total_redeemed_points, 0);
@@ -675,6 +685,14 @@ export default async function handler(req, res) {
                 `,
                 [referrerEarned, referrerAvailable, cleanText(referrer.customer_id)]
               );
+              pendingEmailNotifications.push({
+                recipientEmail: cleanText(referrer.customer_email) || null,
+                customerName: cleanText(referrer.customer_name) || "Customer",
+                eventName: referrerRewardEvent.name,
+                points: referralPoints,
+                availablePoints: referrerAvailable,
+                comments: `Referral reward for customer ${customerId}`,
+              });
             }
           } else {
             skippedEvents.push({
@@ -750,6 +768,14 @@ export default async function handler(req, res) {
             id: adminEligibleEvent.id,
             name: adminEligibleEvent.name,
             pointsEarned: signupPoints,
+          });
+          pendingEmailNotifications.push({
+            recipientEmail: finalCustomerEmail,
+            customerName,
+            eventName: adminEligibleEvent.name,
+            points: signupPoints,
+            availablePoints,
+            comments: "Customer marked eligible by admin",
           });
         }
       }
@@ -838,6 +864,11 @@ export default async function handler(req, res) {
     await client.query("COMMIT");
 
     const row = saveCustomerRes.rows[0];
+    for (const notification of pendingEmailNotifications) {
+      await sendPointsEarnedEmail(notification).catch((error) =>
+        console.error("save-customer-profile earned email error:", error)
+      );
+    }
     return res.status(200).json({
       success: true,
       message: "Customer profile saved successfully.",

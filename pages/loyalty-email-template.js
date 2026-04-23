@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Page, LegacyCard, FormLayout, TextField, Button, Banner, Tabs } from "@shopify/polaris";
 import { EMAIL_TEMPLATE_KEYS } from "../lib/email-template-definitions";
 
-const TEMPLATE_ORDER = [EMAIL_TEMPLATE_KEYS.REFER_FRIEND, EMAIL_TEMPLATE_KEYS.GIFT_CARD];
+const TEMPLATE_ORDER = [
+  EMAIL_TEMPLATE_KEYS.REFER_FRIEND,
+  EMAIL_TEMPLATE_KEYS.GIFT_CARD,
+  EMAIL_TEMPLATE_KEYS.POINTS_EARNED,
+  EMAIL_TEMPLATE_KEYS.POINTS_REDEEMED,
+];
 
 const TEMPLATE_LABELS = {
   [EMAIL_TEMPLATE_KEYS.REFER_FRIEND]: {
@@ -12,6 +17,14 @@ const TEMPLATE_LABELS = {
   [EMAIL_TEMPLATE_KEYS.GIFT_CARD]: {
     title: "Generate Giftcard",
     description: "Customize the email sent when a gift card coupon is generated.",
+  },
+  [EMAIL_TEMPLATE_KEYS.POINTS_EARNED]: {
+    title: "Points Earned",
+    description: "Customize the email sent when a customer receives loyalty points.",
+  },
+  [EMAIL_TEMPLATE_KEYS.POINTS_REDEEMED]: {
+    title: "Points Redeemed",
+    description: "Customize the email sent when a customer spends loyalty points.",
   },
 };
 
@@ -220,8 +233,9 @@ export default function LoyaltyEmailTemplatePage() {
         <div style={ui.hero}>
           <h1 style={ui.heroTitle}>Email Template</h1>
           <p style={ui.heroSub}>
-            Manage the subject and body content for referral and gift card emails. Placeholder values
-            like {"{{giftCode}}"} and {"{{referralCode}}"} will be filled automatically when the email is sent.
+            Manage the subject and body content for referral, gift card, points earned, and points redeemed emails.
+            Placeholder values like {"{{giftCode}}"}, {"{{referralCode}}"}, and {"{{availablePoints}}"} will be filled
+            automatically when the email is sent.
           </p>
         </div>
 
