@@ -1152,8 +1152,10 @@ export default function Dashboard() {
               Centralized configuration for rewards, thresholds, point value strategy, and tier progression.
             </p>
             <div style={ui.heroMetaRow}>
-              <span style={ui.pill}>Mode: {user.type || "standard"}</span>
-              <span style={ui.pill}>License: {(user.licenseKey || "-").slice(0, 14)}...</span>
+              {user?.type === "netsuite" ? (
+                <span style={ui.pill}>NetSuite Account ID: {user.accountId || "-"}</span>
+              ) : null}
+              <span style={ui.pill}>Licence Key: {user.licenseKey || "-"}</span>
               {typeof daysLeft === "number" && (
                 <span style={ui.pill}>
                   {isExpired ? "License expired" : `Expires in ${daysLeft} days`}
