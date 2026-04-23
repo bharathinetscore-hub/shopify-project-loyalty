@@ -1,4 +1,4 @@
-import { Button, FormLayout, TextField } from "@shopify/polaris";
+import { Button, Checkbox, FormLayout, TextField } from "@shopify/polaris";
 import { useState } from "react";
 import styles from "../styles/Form.module.css";
 
@@ -86,16 +86,17 @@ function getEmbeddedQueryString() {
   return query ? `?${query}` : "";
 }
 
-export function NetsuiteForm() {
+export function UnifiedLoginForm() {
   const [fields, setFields] = useState({
     authCode: "",
     licenseKey: "",
     productCode: "",
-    accountId: "",
     licenseUrl: "",
   });
 
   const [loading, setLoading] = useState(false);
+  const [hasAccountId, setHasAccountId] = useState(true);
+  const [accountId, setAccountId] = useState("");
 
   const handleChange = (field) => (value) => {
     setFields((prev) => ({ ...prev, [field]: value }));
@@ -105,13 +106,18 @@ export function NetsuiteForm() {
     event.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/netsuite-login", {
+      const payload = {
+        ...fields,
+        accountId: hasAccountId ? accountId : "",
+      };
+      const endpoint = hasAccountId ? "/api/auth/netsuite-login" : "/api/auth/loyalty-login";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify(fields),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -135,85 +141,27 @@ export function NetsuiteForm() {
           <TextField label="Auth Code" placeholder="Enter your auth code" value={fields.authCode} onChange={handleChange("authCode")} autoComplete="off" prefix={<FieldIcon type="shield" />} />
           <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
           <TextField label="Product Code" placeholder="Enter your product code" value={fields.productCode} onChange={handleChange("productCode")} autoComplete="off" prefix={<FieldIcon type="cube" />} />
-          <TextField label="Account ID" placeholder="Enter your account ID" value={fields.accountId} onChange={handleChange("accountId")} autoComplete="off" prefix={<FieldIcon type="user" />} />
           <TextField label="License URL" placeholder="Enter your license URL" value={fields.licenseUrl} onChange={handleChange("licenseUrl")} autoComplete="off" prefix={<FieldIcon type="globe" />} />
-          <div className={styles.submitButton}>
-            <Button submit variant="primary" loading={loading} fullWidth>
-              Login
-            </Button>
-          </div>
-        </FormLayout>
-      </form>
-    </div>
-  );
-}
-
-export function LoyaltyForm() {
-  const [fields, setFields] = useState({
-    username: "",
-    licenseKey: "",
-    password: "",
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handleChange = (field) => (value) => {
-    setFields((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/loyalty-login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(fields),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        alert(data?.message || data?.error || "Login failed");
-      } else {
-        window.localStorage.setItem("lmpUser", JSON.stringify(data?.user || {}));
-        const query = getEmbeddedQueryString();
-        window.location.replace(`/dashboard${query || ""}`);
-      }
-    } catch (err) {
-      alert("Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className={styles.loginCard}>
-      <form onSubmit={handleSubmit}>
-        <FormLayout>
-          <TextField label="Username" placeholder="Enter your username" value={fields.username} onChange={handleChange("username")} autoComplete="off" prefix={<FieldIcon type="user" />} />
-          <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
-          <TextField
-            label="Password"
-            type={showPassword ? "text" : "password"}
-            placeholder="Enter your password"
-            value={fields.password}
-            onChange={handleChange("password")}
-            autoComplete="off"
-            prefix={<FieldIcon type="key" />}
-            suffix={
-              <button
-                type="button"
-                className={styles.passwordToggle}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword((value) => !value)}
-              >
-                <FieldIcon type={showPassword ? "eyeOff" : "eye"} />
-              </button>
-            }
+          <Checkbox
+            label="I have an Account ID"
+            checked={hasAccountId}
+            onChange={(checked) => {
+              setHasAccountId(checked);
+              if (!checked) {
+                setAccountId("");
+              }
+            }}
           />
+          {hasAccountId ? (
+            <TextField
+              label="Account ID"
+              placeholder="Enter your account ID"
+              value={accountId}
+              onChange={setAccountId}
+              autoComplete="off"
+              prefix={<FieldIcon type="user" />}
+            />
+          ) : null}
           <div className={styles.submitButton}>
             <Button submit variant="primary" loading={loading} fullWidth>
               Login

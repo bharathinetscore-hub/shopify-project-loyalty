@@ -836,10 +836,16 @@ export default function Dashboard() {
         </div>
 
         {user.type === "loyalty" && (
-          <div style={ui.userField}>
-            <p style={ui.userLabel}>Username</p>
-            <p style={ui.userValue}>{user.username || "-"}</p>
-          </div>
+          <>
+            <div style={ui.userField}>
+              <p style={ui.userLabel}>Product Code</p>
+              <p style={ui.userValue}>{user.productCode || "-"}</p>
+            </div>
+            <div style={ui.userField}>
+              <p style={ui.userLabel}>Account Type</p>
+              <p style={ui.userValue}>Loyalty User</p>
+            </div>
+          </>
         )}
       </div>
 

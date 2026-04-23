@@ -1,5 +1,6 @@
 import pool from "../../../db/db";
 import cors from "../../../lib/cors";
+import { ensureLoyaltyUserTableSchema } from "../../../lib/loyalty-user-table";
 
 function getNumericId(gid) {
   if (!gid) return null;
@@ -17,16 +18,29 @@ async function resolveLicenseStatus({ type, licenseKey, username, productCode })
   const hasIdentity = Boolean(type && licenseKey);
 
   if (type === "loyalty" && licenseKey) {
-    const loyaltyRes = await pool.query(
+    await ensureLoyaltyUserTableSchema(pool);
+
+    const loyaltyQuery = productCode
+      ? `
+      SELECT plan_end_date
+      FROM "netst-lmp-users"
+      WHERE license_key = $1
+        AND product_code = $2
+      ORDER BY updated_at DESC NULLS LAST
+      LIMIT 1
       `
+      : `
       SELECT plan_end_date
       FROM "netst-lmp-users"
       WHERE license_key = $1
         AND ($2::text IS NULL OR username = $2)
       ORDER BY updated_at DESC NULLS LAST
       LIMIT 1
-      `,
-      [licenseKey, username || null]
+      `;
+
+    const loyaltyRes = await pool.query(
+      loyaltyQuery,
+      productCode ? [licenseKey, productCode] : [licenseKey, username || null]
     );
     row = loyaltyRes.rows[0] || null;
   } else if (type === "netsuite" && licenseKey) {

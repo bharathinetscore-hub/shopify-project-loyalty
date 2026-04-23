@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
-import { RadioButton } from "@shopify/polaris";
-import { NetsuiteForm, LoyaltyForm } from "../components/FormComponents";
+import { useEffect, useState } from "react";
+import { UnifiedLoginForm } from "../components/FormComponents";
 import styles from "../styles/Form.module.css";
 
 function getEmbeddedQueryString() {
@@ -23,7 +22,6 @@ function getEmbeddedQueryString() {
 
 export default function Home() {
 
-  const [selected, setSelected] = useState("netsuite");
   const [checkedLogin, setCheckedLogin] = useState(false);
 
   useEffect(() => {
@@ -36,19 +34,16 @@ export default function Home() {
 
     if (checkedLogin) {
       state = "login-form-visible";
-      text =
-        selected === "netsuite"
-          ? "Login User Account / Existing NetSuite Customer"
-          : "Login User Account / Existing Rental Customer";
+      text = "Login User Account";
     }
 
     report({
       page: "index",
       state,
       text,
-      extra: `selected=${selected}`,
+      extra: "mode=single-form",
     });
-  }, [checkedLogin, selected]);
+  }, [checkedLogin]);
 
   useEffect(() => {
     const user = sessionStorage.getItem("lmpUser") || localStorage.getItem("lmpUser");
@@ -76,9 +71,8 @@ export default function Home() {
   // ⛔ Wait until login check finishes
   if (!checkedLogin) return <div>Loading...</div>;
 
-  const hasNetsuiteForm = typeof NetsuiteForm === "function";
-  const hasLoyaltyForm = typeof LoyaltyForm === "function";
-  if ((selected === "netsuite" && !hasNetsuiteForm) || (selected === "loyalty" && !hasLoyaltyForm)) {
+  const hasUnifiedLoginForm = typeof UnifiedLoginForm === "function";
+  if (!hasUnifiedLoginForm) {
     return (
       <div style={{ padding: 20 }}>
         Unable to load login form component. Restart `shopify app dev` and hard refresh this page.
@@ -143,27 +137,8 @@ export default function Home() {
             <p>Please enter your credentials</p>
           </div>
 
-          <div className={styles.radioRow}>
-            <RadioButton
-              label="Existing NetSuite Customer"
-              checked={selected === "netsuite"}
-              id="netsuite-login"
-              name="loginType"
-              onChange={() => setSelected("netsuite")}
-            />
-
-            <RadioButton
-              label="Existing Rental Customer"
-              checked={selected === "loyalty"}
-              id="loyalty-login"
-              name="loginType"
-              onChange={() => setSelected("loyalty")}
-            />
-          </div>
-
           <div className={styles.formShell}>
-            {selected === "netsuite" && hasNetsuiteForm && <NetsuiteForm />}
-            {selected === "loyalty" && hasLoyaltyForm && <LoyaltyForm />}
+            {hasUnifiedLoginForm && <UnifiedLoginForm />}
           </div>
         </div>
       </div>

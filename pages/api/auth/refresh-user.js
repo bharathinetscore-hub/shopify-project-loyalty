@@ -1,4 +1,5 @@
 import pool from "../../../db/db";
+import { ensureLoyaltyUserTableSchema, findLoyaltyUserByIdentity } from "../../../lib/loyalty-user-table";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -13,33 +14,26 @@ export default async function handler(req, res) {
     }
 
     if (type === "loyalty") {
-      if (!username) {
-        return res.status(400).json({ success: false, message: "Username required for loyalty user" });
-      }
+      await ensureLoyaltyUserTableSchema(pool);
 
-      const result = await pool.query(
-        `
-        SELECT username, license_key, plan_end_date
-        FROM "netst-lmp-users"
-        WHERE license_key = $1
-          AND username = $2
-        ORDER BY updated_at DESC NULLS LAST
-        LIMIT 1
-        `,
-        [licenseKey, username]
-      );
+      const user = await findLoyaltyUserByIdentity(pool, {
+        licenseKey,
+        productCode,
+        username,
+        includeInactive: true,
+      });
 
-      if (!result.rows.length) {
+      if (!user) {
         return res.status(404).json({ success: false, message: "User not found" });
       }
 
-      const user = result.rows[0];
       return res.status(200).json({
         success: true,
         user: {
           type: "loyalty",
-          username: user.username,
           licenseKey: user.license_key,
+          productCode: user.product_code || "",
+          licenseUrl: user.license_url || "",
           planEnd: user.plan_end_date,
         },
       });
@@ -90,4 +84,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 }
-

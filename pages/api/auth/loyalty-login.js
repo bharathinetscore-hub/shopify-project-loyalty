@@ -1,93 +1,60 @@
-import bcrypt from "bcrypt";
-import LmpUser from "../../../models/LmpUser";
 import pool from "../../../db/db";
+import { ensureLoyaltyUserTableSchema, findLoyaltyUserByIdentity } from "../../../lib/loyalty-user-table";
 
-function isBcryptHash(value) {
-  return /^\$2[aby]\$\d{2}\$/.test(String(value || ""));
+function cleanText(value) {
+  return String(value || "").trim();
 }
 
 export default async function handler(req, res) {
-
   if (req.method !== "POST") {
     return res.status(405).end();
   }
 
   try {
-    const { licenseKey, username, password } = req.body;
+    await ensureLoyaltyUserTableSchema(pool);
 
-    if (!licenseKey || !username || !password) {
+    const licenseKey = cleanText(req.body?.licenseKey);
+    const productCode = cleanText(req.body?.productCode);
+
+    if (!licenseKey || !productCode) {
       return res.status(400).json({
         success: false,
-        message: "Username, license key, and password are required",
+        message: "License key and product code are required",
       });
     }
 
-    const user = await LmpUser.findByLogin(
+    const existingUser = await findLoyaltyUserByIdentity(pool, {
       licenseKey,
-      username
-    );
+      productCode,
+      includeInactive: true,
+    });
 
-    if (!user) {
+    if (!existingUser) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Loyalty user not found",
       });
     }
 
-    if (!user.password) {
-      return res.status(401).json({
-        success: false,
-        message: "Password is not configured for this user",
-      });
-    }
-
-    let ok = false;
-
-    if (isBcryptHash(user.password)) {
-      ok = await bcrypt.compare(password, user.password);
-    } else {
-      ok = password === user.password;
-
-      if (ok) {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        await pool.query(
-          `
-          UPDATE "netst-lmp-users"
-          SET password = $1,
-              updated_at = NOW()
-          WHERE id = $2
-          `,
-          [hashedPassword, user.id]
-        );
-      }
-    }
-
-    if (!ok) {
-      return res.status(401).json({
-        success: false,
-        message: "Wrong password",
-      });
-    }
-
-    const licenseExpired = new Date() > new Date(user.plan_end_date);
+    const licenseExpired = new Date() > new Date(existingUser.plan_end_date);
 
     return res.status(200).json({
-  success: true,
-  message: licenseExpired ? "License expired. Please renew it as soon as possible." : "Login successful",
-  user: {
-    username: user.username,
-    licenseKey: user.license_key,
-    planEnd: user.plan_end_date,
-    licenseExpired,
-  },
-});
-
-
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({
+      success: true,
+      message: licenseExpired ? "License expired. Please renew it as soon as possible." : "Login successful",
+      user: {
+        type: "loyalty",
+        licenseKey: existingUser.license_key,
+        productCode: existingUser.product_code,
+        licenseUrl: existingUser.license_url,
+        planEnd: existingUser.plan_end_date,
+        licenseExpired,
+      },
+    });
+  } catch (error) {
+    console.error("Loyalty Login Error:", error);
+    return res.status(500).json({
       success: false,
-      message: e?.message || "Server error",
+      message: error?.message || "Server error",
     });
   }
 }
