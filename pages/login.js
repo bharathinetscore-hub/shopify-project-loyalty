@@ -133,8 +133,8 @@ export default function Home() {
         <div className={styles.formPanel}>
           <div className={`${styles.dotGrid} ${styles.dotGridRight}`} />
           <div className={styles.loginHeader}>
-            <h1 className={styles.loginTitle}>Login User Account</h1>
-            <p>Please enter your credentials</p>
+            <h1 className={styles.loginTitle}>Activate Your Licence</h1>
+            <p>Fill the licence details</p>
           </div>
 
           <div className={styles.formShell}>

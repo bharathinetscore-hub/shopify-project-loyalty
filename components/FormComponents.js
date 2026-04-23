@@ -138,12 +138,12 @@ export function UnifiedLoginForm() {
     <div className={styles.loginCard}>
       <form onSubmit={handleSubmit}>
         <FormLayout>
-          <TextField label="Auth Code" placeholder="Enter your auth code" value={fields.authCode} onChange={handleChange("authCode")} autoComplete="off" prefix={<FieldIcon type="shield" />} />
-          <TextField label="License Key" placeholder="Enter your license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
-          <TextField label="Product Code" placeholder="Enter your product code" value={fields.productCode} onChange={handleChange("productCode")} autoComplete="off" prefix={<FieldIcon type="cube" />} />
-          <TextField label="License URL" placeholder="Enter your license URL" value={fields.licenseUrl} onChange={handleChange("licenseUrl")} autoComplete="off" prefix={<FieldIcon type="globe" />} />
+          <TextField label="Auth Code" placeholder="Enter auth code" value={fields.authCode} onChange={handleChange("authCode")} autoComplete="off" prefix={<FieldIcon type="shield" />} />
+          <TextField label="License Key" placeholder="Enter license key" value={fields.licenseKey} onChange={handleChange("licenseKey")} autoComplete="off" prefix={<FieldIcon type="key" />} />
+          <TextField label="Product Code" placeholder="Enter product code" value={fields.productCode} onChange={handleChange("productCode")} autoComplete="off" prefix={<FieldIcon type="cube" />} />
+          <TextField label="License URL" placeholder="Enter license URL" value={fields.licenseUrl} onChange={handleChange("licenseUrl")} autoComplete="off" prefix={<FieldIcon type="globe" />} />
           <Checkbox
-            label="I have an Account ID"
+            label="I have NetSuite Account ID"
             checked={hasAccountId}
             onChange={(checked) => {
               setHasAccountId(checked);
@@ -154,8 +154,8 @@ export function UnifiedLoginForm() {
           />
           {hasAccountId ? (
             <TextField
-              label="Account ID"
-              placeholder="Enter your account ID"
+              label="NetSuite Account ID"
+              placeholder="Enter NetSuite account ID"
               value={accountId}
               onChange={setAccountId}
               autoComplete="off"
@@ -164,7 +164,7 @@ export function UnifiedLoginForm() {
           ) : null}
           <div className={styles.submitButton}>
             <Button submit variant="primary" loading={loading} fullWidth>
-              Login
+              {loading ? "Activating" : "Activate"}
             </Button>
           </div>
         </FormLayout>
