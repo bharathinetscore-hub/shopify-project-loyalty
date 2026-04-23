@@ -1,6 +1,6 @@
 .pageBg {
   min-height: 100vh;
-  background: #f7f8f6;
+  background: #f8fbff;
   padding: 34px 44px;
   display: flex;
   justify-content: center;
@@ -17,7 +17,7 @@
   grid-template-columns: 36% 64%;
   align-items: stretch;
   overflow: hidden;
-  border: 1px solid #dfe7df;
+  border: 1px solid #d8e2f3;
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 22px 54px rgba(15, 23, 42, 0.12);
@@ -34,16 +34,16 @@
   align-items: center;
   justify-content: flex-start;
   background:
-    radial-gradient(circle at 48% 8%, rgba(214, 232, 219, 0.78), transparent 23%),
-    radial-gradient(circle at 24% 80%, rgba(225, 239, 230, 0.9), transparent 24%),
-    linear-gradient(150deg, #f9fbf8 0%, #edf5ef 100%);
+    radial-gradient(circle at 48% 8%, rgba(153, 223, 239, 0.34), transparent 23%),
+    radial-gradient(circle at 24% 80%, rgba(209, 217, 255, 0.38), transparent 24%),
+    linear-gradient(150deg, #f7fcff 0%, #edf5ff 100%);
 }
 
 .brandPanel::before,
 .brandPanel::after {
   content: "";
   position: absolute;
-  border: 1px solid rgba(23, 112, 55, 0.12);
+  border: 1px solid rgba(20, 145, 174, 0.14);
   border-radius: 999px;
   pointer-events: none;
 }
@@ -70,15 +70,15 @@
   height: clamp(164px, 15vw, 206px);
   display: grid;
   place-items: center;
-  border: 7px solid rgba(23, 112, 55, 0.06);
+  border: 7px solid rgba(20, 145, 174, 0.08);
   border-radius: 999px;
-  background: rgba(232, 242, 235, 0.82);
+  background: rgba(236, 247, 250, 0.9);
 }
 
 .giftIcon {
   width: clamp(116px, 10vw, 140px);
   height: clamp(116px, 10vw, 140px);
-  fill: #137335;
+  fill: #1491ae;
 }
 
 .giftIcon .starPath {
@@ -104,7 +104,7 @@
 
 .brandText p {
   margin: 6px 0 0;
-  color: #137335;
+  color: #1491ae;
   font-size: clamp(22px, 2.1vw, 27px);
   line-height: 1.2;
   font-weight: 800;
@@ -117,7 +117,7 @@
   height: 3px;
   margin: clamp(18px, 3vh, 30px) auto clamp(16px, 2.6vh, 26px);
   border-radius: 999px;
-  background: #137335;
+  background: linear-gradient(120deg, #4f46e5, #0891b2);
 }
 
 .brandText div {
@@ -141,7 +141,7 @@
   box-sizing: border-box;
   border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 18px 36px rgba(23, 112, 55, 0.12);
+  box-shadow: 0 18px 36px rgba(79, 70, 229, 0.12);
   padding: 20px 28px;
 }
 
@@ -153,14 +153,14 @@
 
 .cardTopLine {
   width: 100%;
-  background: #137335;
+  background: linear-gradient(120deg, #0891b2, #1491ae);
 }
 
 .cardMutedLine {
   width: 100%;
   height: 12px;
   margin-top: 14px;
-  background: #d9e2dd;
+  background: #dbe4f4;
 }
 
 .chartRow {
@@ -177,7 +177,7 @@
   flex: 0 0 auto;
   border-radius: 999px;
   background:
-    conic-gradient(#137335 0 25%, #dceee3 25% 50%, #14753a 50% 73%, #80b58e 73% 100%);
+    conic-gradient(#1491ae 0 25%, #d8eefd 25% 50%, #4f46e5 50% 73%, #86d0e4 73% 100%);
 }
 
 .statBars {
@@ -190,7 +190,7 @@
   width: 74px;
   height: 12px;
   border-radius: 999px;
-  background: #dbe4df;
+  background: #dbe4f4;
 }
 
 .statBars i::before {
@@ -201,7 +201,7 @@
   margin-left: -28px;
   margin-top: -2px;
   border-radius: 999px;
-  background: #137335;
+  background: linear-gradient(120deg, #4f46e5, #0891b2);
 }
 
 .lockCircle {
@@ -213,7 +213,7 @@
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: #137335;
+  background: linear-gradient(120deg, #4f46e5, #0891b2);
 }
 
 .lockCircle svg {
@@ -230,7 +230,7 @@
   position: absolute;
   width: 98px;
   height: 98px;
-  background-image: radial-gradient(circle, rgba(19, 115, 53, 0.16) 2px, transparent 2px);
+  background-image: radial-gradient(circle, rgba(20, 145, 174, 0.16) 2px, transparent 2px);
   background-size: 18px 18px;
   pointer-events: none;
 }
@@ -292,7 +292,7 @@
 }
 
 .radioRow :global(.Polaris-RadioButton__Input:checked + .Polaris-RadioButton__Backdrop) {
-  border-color: #137335;
+  border-color: #1491ae;
   background: #ffffff;
   box-shadow: none;
 }
@@ -300,13 +300,13 @@
 .radioRow :global(.Polaris-RadioButton__Input:checked + .Polaris-RadioButton__Backdrop::before) {
   width: 8px;
   height: 8px;
-  background-color: #137335;
+  background: linear-gradient(120deg, #4f46e5, #0891b2);
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
 }
 
 .radioRow :global(.Polaris-RadioButton__Input:focus-visible + .Polaris-RadioButton__Backdrop) {
-  outline: 2px solid rgba(19, 115, 53, 0.18);
+  outline: 2px solid rgba(20, 145, 174, 0.18);
   outline-offset: 2px;
 }
 
@@ -357,8 +357,8 @@
 }
 
 .loginCard :global(.Polaris-TextField:focus-within .Polaris-TextField__Backdrop) {
-  border-color: #137335;
-  box-shadow: 0 0 0 3px rgba(19, 115, 53, 0.12);
+  border-color: #1491ae;
+  box-shadow: 0 0 0 3px rgba(20, 145, 174, 0.12);
   outline: none;
 }
 
@@ -381,11 +381,11 @@
   align-items: center;
   justify-content: center;
   border-right: 1px solid #d7dde3;
-  background: #f5faf7;
+  background: #f2fbff;
 }
 
 .loginCard :global(.Polaris-TextField:focus-within .Polaris-TextField__Prefix) {
-  border-right-color: rgba(19, 115, 53, 0.22);
+  border-right-color: rgba(20, 145, 174, 0.22);
 }
 
 .loginCard :global(.Polaris-TextField__InputAndSuffixWrapper) {
@@ -415,7 +415,7 @@
   width: 22px;
   height: 22px;
   fill: none;
-  stroke: #137335;
+  stroke: #1491ae;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -427,7 +427,7 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #137335;
+  color: #1491ae;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -435,7 +435,7 @@
 }
 
 .passwordToggle:hover {
-  background: #eef7f1;
+  background: #eef8ff;
 }
 
 .passwordToggle .fieldIcon {
@@ -451,14 +451,14 @@
   min-height: clamp(46px, 5.2vh, 54px);
   width: 100%;
   border-radius: 7px;
-  background: #137335;
-  border-color: #137335;
+  background: linear-gradient(120deg, #4f46e5, #0891b2);
+  border-color: transparent;
   box-shadow: none;
 }
 
 .submitButton :global(.Polaris-Button:hover) {
-  background: #0f652d;
-  border-color: #0f652d;
+  background: linear-gradient(120deg, #4338ca, #0e7490);
+  border-color: transparent;
 }
 
 .submitButton :global(.Polaris-Button__Text) {
@@ -486,7 +486,7 @@
   width: 20px;
   height: 22px;
   margin: 24px auto -43px calc(50% - 134px);
-  background-color: #137335;
+  background-color: #1491ae;
   clip-path: path("M10 0 L18 3.2 V9.5 C18 15 14.8 19.2 10 22 C5.2 19.2 2 15 2 9.5 V3.2 Z");
 }
 
