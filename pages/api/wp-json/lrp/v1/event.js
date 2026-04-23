@@ -1,4 +1,5 @@
 import pool from "../../../../../db/db";
+import { sendPointsEarnedEmail, sendPointsRedeemedEmail } from "../../../../../lib/points-email";
 
 function cleanText(value) {
   return String(value || "").trim();
@@ -426,11 +427,22 @@ async function createEventSingle(db, payload) {
   );
 
   const savedCustomer = await recalcCustomerLedger(db, customerNumericId);
+  const savedEvent = insertRes.rows[0] || {};
   return {
     status: 201,
     data: {
-      event: mapEventRow(insertRes.rows[0] || {}),
+      event: mapEventRow(savedEvent),
       customer: savedCustomer ? mapCustomerRow(savedCustomer) : null,
+    },
+    emailNotification: {
+      recipientEmail: cleanText(savedCustomer?.customer_email || customer.customer_email),
+      customerName: cleanText(savedCustomer?.customer_name || customer.customer_name) || "Customer",
+      eventName: cleanText(savedEvent.event_name),
+      pointsEarned: toNumber(savedEvent.points_earned, 0),
+      pointsRedeemed: toNumber(savedEvent.points_redeemed, 0),
+      availablePoints: toNumber(savedCustomer?.available_points, 0),
+      amount: toNumber(savedEvent.amount, 0),
+      comments: cleanText(savedEvent.comments),
     },
   };
 }
@@ -670,10 +682,38 @@ export default async function handler(req, res) {
         const results = [];
         for (const payload of payloads) {
           const result = await createEventSingle(client, payload);
-          results.push({ status: result.status, data: result.data });
+          results.push(result);
         }
         await client.query("COMMIT");
-        return res.status(200).json(results);
+        for (const result of results) {
+          const notification = result?.emailNotification;
+          if (!notification?.recipientEmail) continue;
+
+          if (notification.pointsEarned > 0) {
+            await sendPointsEarnedEmail({
+              recipientEmail: notification.recipientEmail,
+              customerName: notification.customerName,
+              eventName: notification.eventName,
+              points: notification.pointsEarned,
+              availablePoints: notification.availablePoints,
+              amount: notification.amount,
+              comments: notification.comments,
+            }).catch((error) => console.error("wp-json bulk earned email error:", error));
+          }
+
+          if (notification.pointsRedeemed > 0) {
+            await sendPointsRedeemedEmail({
+              recipientEmail: notification.recipientEmail,
+              customerName: notification.customerName,
+              eventName: notification.eventName,
+              points: notification.pointsRedeemed,
+              availablePoints: notification.availablePoints,
+              amount: notification.amount,
+              comments: notification.comments,
+            }).catch((error) => console.error("wp-json bulk redeemed email error:", error));
+          }
+        }
+        return res.status(200).json(results.map((result) => ({ status: result.status, data: result.data })));
       }
 
       const result = await createEventSingle(client, payloads[0] || {});
@@ -682,6 +722,31 @@ export default async function handler(req, res) {
         return res.status(result.status).json(result.data);
       }
       await client.query("COMMIT");
+      const notification = result.emailNotification;
+      if (notification?.recipientEmail) {
+        if (notification.pointsEarned > 0) {
+          await sendPointsEarnedEmail({
+            recipientEmail: notification.recipientEmail,
+            customerName: notification.customerName,
+            eventName: notification.eventName,
+            points: notification.pointsEarned,
+            availablePoints: notification.availablePoints,
+            amount: notification.amount,
+            comments: notification.comments,
+          }).catch((error) => console.error("wp-json event earned email error:", error));
+        }
+        if (notification.pointsRedeemed > 0) {
+          await sendPointsRedeemedEmail({
+            recipientEmail: notification.recipientEmail,
+            customerName: notification.customerName,
+            eventName: notification.eventName,
+            points: notification.pointsRedeemed,
+            availablePoints: notification.availablePoints,
+            amount: notification.amount,
+            comments: notification.comments,
+          }).catch((error) => console.error("wp-json event redeemed email error:", error));
+        }
+      }
       return res.status(result.status).json(result.data);
     }
 
