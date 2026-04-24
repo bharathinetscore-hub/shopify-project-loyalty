@@ -1270,7 +1270,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       name: String(item.productName || ""),
       sku: String(item.sku || ""),
       enableLoyalty: true,
-      enableCollection: true,
+      enableCollection: !!item.enableCollection,
       collectionType: item.collectionType === "amount" ? "sku" : "points",
       pointsValue: String(item.pointsBased ?? ""),
       skuValue: String(item.skuBased ?? ""),
