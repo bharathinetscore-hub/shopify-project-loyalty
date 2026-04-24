@@ -204,19 +204,19 @@ async function upsertCustomerPoints({
   );
 }
 
-async function getGlobalMultiplier() {
+async function getLoyaltyPointValue() {
   const configRes = await pool.query(
-    "SELECT each_point_value FROM netst_loyalty_config_table ORDER BY id DESC LIMIT 1"
+    "SELECT loyalty_point_value FROM netst_loyalty_config_table ORDER BY id DESC LIMIT 1"
   );
-  return toNumber(configRes.rows[0]?.each_point_value, 1);
+  return toNumber(configRes.rows[0]?.loyalty_point_value, 1);
 }
 
-async function getCustomerTierMultiplier(customerId) {
+async function getCustomerTierPointsPerDollar(customerId) {
   if (!customerId) return null;
 
   const customerRes = await pool.query(
     `
-      SELECT total_earned_points
+      SELECT available_points
       FROM netst_customers_table
       WHERE customer_id = $1
       LIMIT 1
@@ -225,7 +225,7 @@ async function getCustomerTierMultiplier(customerId) {
   );
   if (!customerRes.rows.length) return null;
 
-  const earnedPoints = toNumber(customerRes.rows[0]?.total_earned_points, 0);
+  const availablePoints = toNumber(customerRes.rows[0]?.available_points, 0);
   const tierRes = await pool.query(
     `
       SELECT points_per_dollar
@@ -235,7 +235,7 @@ async function getCustomerTierMultiplier(customerId) {
       ORDER BY COALESCE(threshold, 0) DESC, id DESC
       LIMIT 1
     `,
-    [earnedPoints]
+    [availablePoints]
   );
   if (!tierRes.rows.length) return null;
   return toNumber(tierRes.rows[0]?.points_per_dollar, null);
@@ -335,7 +335,8 @@ async function calculateOrderPoints({ customerId, lineItems }) {
     productMap.set(String(row.item_id), row);
   }
 
-  const globalMultiplier = await getGlobalMultiplier();
+  const loyaltyPointValue = await getLoyaltyPointValue();
+  const tierPointsPerDollar = await getCustomerTierPointsPerDollar(customerId);
 
   let total = 0;
   for (const line of lineItems) {
@@ -354,7 +355,7 @@ async function calculateOrderPoints({ customerId, lineItems }) {
     const collectionType = String(product.collection_type || "").toLowerCase();
 
     if (!enableCollection) {
-      total += lineAmount * globalMultiplier;
+      total += lineAmount * loyaltyPointValue;
       continue;
     }
 
@@ -365,12 +366,16 @@ async function calculateOrderPoints({ customerId, lineItems }) {
 
     if (collectionType === "amount") {
       const skuMultiplier = toNumber(product.sku_based_points, 0);
-      const bestMultiplier = Math.max(globalMultiplier, skuMultiplier);
+      const bestMultiplier = Math.max(
+        skuMultiplier,
+        loyaltyPointValue,
+        toNumber(tierPointsPerDollar, 0)
+      );
       total += lineAmount * bestMultiplier;
       continue;
     }
 
-    total += lineAmount * globalMultiplier;
+    total += lineAmount * loyaltyPointValue;
   }
 
   return Math.max(0, Math.round(total));

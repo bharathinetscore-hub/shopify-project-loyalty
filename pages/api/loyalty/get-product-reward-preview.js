@@ -47,6 +47,11 @@ async function ensureCustomersTable() {
     ALTER TABLE netst_customers_table
     ADD COLUMN IF NOT EXISTS customer_eligible_for_loyalty BOOLEAN NOT NULL DEFAULT false
   `);
+
+  await pool.query(`
+    ALTER TABLE netst_customers_table
+    ADD COLUMN IF NOT EXISTS available_points NUMERIC(12,2) NOT NULL DEFAULT 0
+  `);
 }
 
 async function loadCustomerEligibility(customerId, customerEmail) {
@@ -141,17 +146,83 @@ async function getFeatureSettings() {
   };
 }
 
-async function getGlobalMultiplier() {
+async function getLoyaltyPointValue() {
   const configRes = await pool.query(
     `
-    SELECT each_point_value
+    SELECT loyalty_point_value
     FROM netst_loyalty_config_table
     ORDER BY id DESC
     LIMIT 1
     `
   );
 
-  return toNumber(configRes.rows[0]?.each_point_value, 1);
+  return toNumber(configRes.rows[0]?.loyalty_point_value, 1);
+}
+
+async function loadCustomerAvailablePoints(customerId, customerEmail) {
+  await ensureCustomersTable();
+
+  const parsedCustomerId = parseCustomerId(customerId);
+  if (parsedCustomerId) {
+    const byId = await pool.query(
+      `
+        SELECT available_points
+        FROM netst_customers_table
+        WHERE (
+          TRIM(COALESCE(customer_id, '')) = TRIM($1)
+          OR regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $1
+        )
+        ORDER BY updated_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      `,
+      [parsedCustomerId]
+    );
+
+    if (byId.rows.length) {
+      return toNumber(byId.rows[0]?.available_points, 0);
+    }
+  }
+
+  const normalizedEmail = cleanText(customerEmail);
+  if (normalizedEmail) {
+    const byEmail = await pool.query(
+      `
+        SELECT available_points
+        FROM netst_customers_table
+        WHERE LOWER(TRIM(COALESCE(customer_email, ''))) = LOWER(TRIM($1))
+        ORDER BY updated_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      `,
+      [normalizedEmail]
+    );
+
+    if (byEmail.rows.length) {
+      return toNumber(byEmail.rows[0]?.available_points, 0);
+    }
+  }
+
+  return 0;
+}
+
+async function getCustomerTierPointsPerDollar(customerId, customerEmail) {
+  const availablePoints = await loadCustomerAvailablePoints(customerId, customerEmail);
+  const tierRes = await pool.query(
+    `
+      SELECT points_per_dollar
+      FROM netst_loyalty_tiers_table
+      WHERE COALESCE(status, false) = true
+        AND COALESCE(threshold, 0) <= $1
+      ORDER BY COALESCE(threshold, 0) DESC, id DESC
+      LIMIT 1
+    `,
+    [availablePoints]
+  );
+
+  if (!tierRes.rows.length) {
+    return null;
+  }
+
+  return toNumber(tierRes.rows[0]?.points_per_dollar, null);
 }
 
 function getRequestValue(req, key) {
@@ -254,22 +325,29 @@ export default async function handler(req, res) {
       });
     }
 
-    const globalMultiplier = await getGlobalMultiplier();
+    const loyaltyPointValue = await getLoyaltyPointValue();
+    const tierPointsPerDollar = hasCustomerContext
+      ? await getCustomerTierPointsPerDollar(customerId, customerEmail)
+      : null;
     const enableCollection = Boolean(item.enable_collection_type);
     const collectionType = cleanText(item.collection_type).toLowerCase();
 
     let calculatedPoints = 0;
 
     if (!enableCollection) {
-      calculatedPoints = productPrice * globalMultiplier;
+      calculatedPoints = productPrice * loyaltyPointValue;
     } else if (collectionType === "points") {
       calculatedPoints = toNumber(item.points_based_points, 0);
     } else if (collectionType === "amount") {
       const skuMultiplier = toNumber(item.sku_based_points, 0);
-      const bestMultiplier = Math.max(globalMultiplier, skuMultiplier);
+      const bestMultiplier = Math.max(
+        skuMultiplier,
+        loyaltyPointValue,
+        toNumber(tierPointsPerDollar, 0)
+      );
       calculatedPoints = productPrice * bestMultiplier;
     } else {
-      calculatedPoints = productPrice * globalMultiplier;
+      calculatedPoints = productPrice * loyaltyPointValue;
     }
 
     const points = Math.max(0, Math.round(calculatedPoints));
@@ -278,7 +356,8 @@ export default async function handler(req, res) {
       points,
       message: points > 0 ? `Earn ${points} points` : "",
       meta: {
-        globalMultiplier,
+        loyaltyPointValue,
+        tierPointsPerDollar,
         collectionType: enableCollection ? collectionType || "default" : "disabled",
       },
     });
