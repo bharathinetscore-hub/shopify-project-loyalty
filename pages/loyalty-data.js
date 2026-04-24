@@ -2679,6 +2679,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
                 "Product Name",
                 "Product ID",
                 "Eligibility",
+                "Collection Enabled",
                 "Collection Type",
                 "Points Based",
                 "SKU Based",
@@ -2688,7 +2689,14 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
                 item.productName || "-",
                 item.productId || "-",
                 <span className="yes-pill" key={`yes-${item.productId}`}>Yes</span>,
-                item.collectionType === "amount" ? "SKU based" : "Points based",
+                <span className={item.enableCollection ? "yes-pill" : "no-pill"} key={`collection-enabled-${item.productId}`}>
+                  {item.enableCollection ? "Yes" : "No"}
+                </span>,
+                item.enableCollection
+                  ? item.collectionType === "amount"
+                    ? "SKU based"
+                    : "Points based"
+                  : "Default",
                 String(item.pointsBased ?? 0),
                 String(item.skuBased ?? 0),
                 <button
