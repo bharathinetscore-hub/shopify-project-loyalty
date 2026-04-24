@@ -336,7 +336,6 @@ async function calculateOrderPoints({ customerId, lineItems }) {
   }
 
   const globalMultiplier = await getGlobalMultiplier();
-  const tierMultiplier = await getCustomerTierMultiplier(customerId);
 
   let total = 0;
   for (const line of lineItems) {
@@ -355,8 +354,7 @@ async function calculateOrderPoints({ customerId, lineItems }) {
     const collectionType = String(product.collection_type || "").toLowerCase();
 
     if (!enableCollection) {
-      const multiplier = tierMultiplier ?? globalMultiplier;
-      total += lineAmount * multiplier;
+      total += lineAmount * globalMultiplier;
       continue;
     }
 
@@ -367,13 +365,12 @@ async function calculateOrderPoints({ customerId, lineItems }) {
 
     if (collectionType === "amount") {
       const skuMultiplier = toNumber(product.sku_based_points, 0);
-      const bestMultiplier = Math.max(tierMultiplier ?? 0, globalMultiplier, skuMultiplier);
+      const bestMultiplier = Math.max(globalMultiplier, skuMultiplier);
       total += lineAmount * bestMultiplier;
       continue;
     }
 
-    const multiplier = tierMultiplier ?? globalMultiplier;
-    total += lineAmount * multiplier;
+    total += lineAmount * globalMultiplier;
   }
 
   return Math.max(0, Math.round(total));
