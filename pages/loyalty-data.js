@@ -1513,7 +1513,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       "Eligibility",
       "Collection Type",
       "Points Based",
-      "SKU Based",
+      "Amount Based",
       "SKU",
     ];
     const lines = enabledItems.map((item) =>
@@ -2652,7 +2652,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
                     options={[
                       { label: "All collection types", value: "all" },
                       { label: "Points based", value: "points" },
-                      { label: "SKU based", value: "amount" },
+                      { label: "Amount based", value: "amount" },
                     ]}
                     value={enabledItemsFilter}
                     onChange={setEnabledItemsFilter}
@@ -2682,7 +2682,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
                 "Collection Enabled",
                 "Collection Type",
                 "Points Based",
-                "SKU Based",
+                "Amount Based",
                 "Actions",
               ]}
               rows={enabledItems.map((item) => [
@@ -2694,7 +2694,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
                 </span>,
                 item.enableCollection
                   ? item.collectionType === "amount"
-                    ? "SKU based"
+                    ? "Amount based"
                     : "Points based"
                   : "Default",
                 String(item.pointsBased ?? 0),
@@ -2799,7 +2799,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
                           label="Collection type"
                           options={[
                             { label: "Points based", value: "points" },
-                            { label: "SKU based", value: "sku" },
+                            { label: "Amount based", value: "sku" },
                           ]}
                           value={product.collectionType || "points"}
                           onChange={(value) => updateEditingProduct({ collectionType: value })}
@@ -2818,7 +2818,7 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
                         {product.collectionType === "sku" && (
                           <TextField
-                            label="SKU decimal value"
+                            label="Amount multiplier value"
                             type="number"
                             step={0.01}
                             autoComplete="off"
