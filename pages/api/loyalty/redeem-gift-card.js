@@ -162,6 +162,39 @@ async function loadCustomerEligibility(customerId, customerEmail) {
   return false;
 }
 
+async function loadCustomerContact(customerId, customerEmail) {
+  await ensureCustomersTable();
+
+  const parsedCustomerId = parseCustomerId(customerId);
+  if (parsedCustomerId) {
+    const byId = await pool.query(
+      `
+        SELECT customer_name, customer_email
+        FROM netst_customers_table
+        WHERE (
+          TRIM(COALESCE(customer_id, '')) = TRIM($1)
+          OR regexp_replace(TRIM(COALESCE(customer_id, '')), '\\D', '', 'g') = $1
+        )
+        ORDER BY updated_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      `,
+      [parsedCustomerId]
+    );
+
+    if (byId.rows.length) {
+      return {
+        customerName: cleanText(byId.rows[0]?.customer_name),
+        customerEmail: cleanText(byId.rows[0]?.customer_email),
+      };
+    }
+  }
+
+  return {
+    customerName: "",
+    customerEmail: cleanText(customerEmail),
+  };
+}
+
 async function loadGiftConfig() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS netst_loyalty_config_table (
@@ -458,6 +491,7 @@ export default async function handler(req, res) {
     const customerId = parseCustomerId(req.body?.customerId);
     const customerEmail = cleanText(req.body?.customerEmail);
     const receiverEmail = cleanText(req.body?.receiverEmail);
+    const customerName = cleanText(req.body?.customerName);
     const redeemPoints = toNumber(req.body?.redeemPoints, NaN);
     const shopHint = cleanText(req.body?.shop);
 
@@ -485,6 +519,9 @@ export default async function handler(req, res) {
 
     const config = await loadGiftConfig();
     const giftEvent = await loadGiftCardEventFromTable();
+    const customerContact = await loadCustomerContact(customerId, customerEmail);
+    const redeemedEmail = cleanText(customerContact.customerEmail) || customerEmail;
+    const redeemedCustomerName = cleanText(customerName) || cleanText(customerContact.customerName) || "Customer";
     if (!giftEvent) {
       return res.status(400).json({
         success: false,
@@ -581,8 +618,8 @@ export default async function handler(req, res) {
     });
 
     await sendPointsRedeemedEmail({
-      recipientEmail: receiverEmail,
-      customerName: cleanText(req.body?.customerName) || "Customer",
+      recipientEmail: redeemedEmail,
+      customerName: redeemedCustomerName,
       eventName: giftEvent.name,
       points: redeemPoints,
       availablePoints: pointsLeft,
