@@ -1138,7 +1138,6 @@ export default function Dashboard() {
             </button>
           </div>
         )}
-
         <Page
         >
           <div style={ui.hero}>
