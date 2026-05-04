@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import createApp from "@shopify/app-bridge";
 import { Redirect, ResourcePicker } from "@shopify/app-bridge/actions";
+import LoyaltyFeaturesPage from "./loyalty-features";
 import {
   Page,
   LegacyCard,
@@ -591,6 +592,11 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       if (typeof window === "undefined") return;
       const searchTab = new URLSearchParams(window.location.search).get("tab");
 
+      if (searchTab === "features") {
+        setActiveTab(0);
+        return;
+      }
+
       if (searchTab === "events") {
         setActiveTab(1);
         return;
@@ -613,7 +619,8 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       }
 
       if (forcedTab) {
-        if (forcedTab === "events") setActiveTab(1);
+        if (forcedTab === "features") setActiveTab(0);
+        else if (forcedTab === "events") setActiveTab(1);
         else if (forcedTab === "items") setActiveTab(2);
         else if (forcedTab === "giftcard-generated") setActiveTab(3);
         else if (forcedTab === "loyalty-config") setActiveTab(4);
@@ -622,7 +629,9 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
       }
 
       const path = window.location.pathname;
-      if (path.includes("/loyalty-events")) {
+      if (path.includes("/loyalty-features")) {
+        setActiveTab(0);
+      } else if (path.includes("/loyalty-events")) {
         setActiveTab(1);
       } else if (path.includes("/loyalty-items")) {
         setActiveTab(2);
@@ -2854,6 +2863,16 @@ export function LoyaltyDashboard({ forcedTab = null } = {}) {
 
   if (!user) {
     return <p>Redirecting...</p>;
+  }
+
+  const isFeaturesRoute =
+    forcedTab === "features" ||
+    (typeof window !== "undefined" &&
+      (window.location.pathname.includes("/loyalty-features") ||
+        new URLSearchParams(window.location.search).get("tab") === "features"));
+
+  if (isFeaturesRoute) {
+    return <LoyaltyFeaturesPage />;
   }
 
   if (isExpired) {
