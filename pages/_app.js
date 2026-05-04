@@ -39,7 +39,7 @@ function buildEmbeddedAppPath(rawPath) {
   if (!rawPath || typeof rawPath !== "string") return "";
 
   const { host, shop } = getEmbeddedContext();
-  const normalized = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+  const normalized = getInternalAppPath(rawPath);
   const [pathnameWithQuery, hash = ""] = normalized.split("#");
   const [pathname, query = ""] = pathnameWithQuery.split("?");
   const params = new URLSearchParams(query);
@@ -72,20 +72,16 @@ function extractAppPath(payload) {
   return rawPath;
 }
 
-function navigateEmbeddedWindow(rawPath, { replace = false } = {}) {
-  if (typeof window === "undefined") return;
+function getInternalAppPath(rawPath) {
+  if (!rawPath || typeof rawPath !== "string") return "/";
 
-  const nextPath = buildEmbeddedAppPath(rawPath);
-  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const normalized = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+  const [pathnameWithQuery, hash = ""] = normalized.split("#");
+  const [pathname, query = ""] = pathnameWithQuery.split("?");
+  const embeddedMatch = pathname.match(/^\/store\/[^/]+\/apps\/[^/]+(\/.*)?$/i);
+  const internalPathname = embeddedMatch ? embeddedMatch[1] || "/" : pathname;
 
-  if (!nextPath || nextPath === currentPath) return;
-
-  if (replace) {
-    window.location.replace(nextPath);
-    return;
-  }
-
-  window.location.assign(nextPath);
+  return `${internalPathname}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
 }
 
 function MyApp({ Component, pageProps }) {
@@ -144,16 +140,17 @@ function MyApp({ Component, pageProps }) {
     let lastPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
     const syncExternalRouteChange = () => {
-      const nextPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const externalPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const nextPath = buildEmbeddedAppPath(getInternalAppPath(externalPath));
       const routerPath = router.asPath || "";
 
-      if (nextPath === lastPath || nextPath === routerPath) {
-        lastPath = nextPath;
+      if (externalPath === lastPath || nextPath === routerPath) {
+        lastPath = externalPath;
         return;
       }
 
-      lastPath = nextPath;
-      router.replace(buildEmbeddedAppPath(nextPath), undefined, { shallow: false, scroll: false });
+      lastPath = externalPath;
+      router.replace(nextPath, undefined, { shallow: false, scroll: false });
     };
 
     const pollId = window.setInterval(syncExternalRouteChange, 200);
@@ -193,7 +190,7 @@ function MyApp({ Component, pageProps }) {
       const navigateToAppPath = (payload) => {
         const path = extractAppPath(payload);
         if (!path || typeof path !== "string") return;
-        navigateEmbeddedWindow(path);
+        router.replace(buildEmbeddedAppPath(getInternalAppPath(path)), undefined, { shallow: false, scroll: false });
       };
 
       const unsubscribeRedirect = app.subscribe(Redirect.Action.APP, ({ payload }) => {
