@@ -897,7 +897,7 @@ function LoyaltyRewardsProfileSection({ runtimeApi }) {
 
           <s-box inlineSize="400px">
             <s-text-field
-              label="Enter email here..."
+              label="Enter email here...."
               value={referFriendEmail}
               onInput={(event) => {
                 setReferFriendEmail(event.currentTarget.value);
