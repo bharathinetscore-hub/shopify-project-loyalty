@@ -72,6 +72,22 @@ function extractAppPath(payload) {
   return rawPath;
 }
 
+function navigateEmbeddedWindow(rawPath, { replace = false } = {}) {
+  if (typeof window === "undefined") return;
+
+  const nextPath = buildEmbeddedAppPath(rawPath);
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (!nextPath || nextPath === currentPath) return;
+
+  if (replace) {
+    window.location.replace(nextPath);
+    return;
+  }
+
+  window.location.assign(nextPath);
+}
+
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
   const [config, setConfig] = useState(null);
@@ -177,7 +193,7 @@ function MyApp({ Component, pageProps }) {
       const navigateToAppPath = (payload) => {
         const path = extractAppPath(payload);
         if (!path || typeof path !== "string") return;
-        router.push(buildEmbeddedAppPath(path), undefined, { shallow: false, scroll: false });
+        navigateEmbeddedWindow(path);
       };
 
       const unsubscribeRedirect = app.subscribe(Redirect.Action.APP, ({ payload }) => {
