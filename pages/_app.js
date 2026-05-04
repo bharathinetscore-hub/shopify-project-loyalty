@@ -92,6 +92,19 @@ function getInternalAppPath(rawPath) {
   return `${internalPathname}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
 }
 
+function extractPathFromAction(action) {
+  const candidates = [
+    action?.payload?.path,
+    action?.payload?.destination?.path,
+    action?.payload?.destination,
+    action?.payload?.url,
+    action?.path,
+  ];
+
+  const rawPath = candidates.find((value) => typeof value === "string" && value.trim());
+  return rawPath ? getInternalAppPath(rawPath) : "";
+}
+
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
   const [config, setConfig] = useState(null);
@@ -197,11 +210,29 @@ function MyApp({ Component, pageProps }) {
       ];
       NavigationMenu.create(app, { items });
 
+      const syncPathFromBridge = (rawPath) => {
+        const internalPath = getInternalAppPath(rawPath);
+        if (!internalPath) return;
+
+        setBrowserPath(internalPath);
+
+        const nextPath = buildEmbeddedAppPath(internalPath);
+        if (nextPath && nextPath !== (router.asPath || "")) {
+          router.replace(nextPath, undefined, { shallow: false, scroll: false });
+        }
+      };
+
       const navigateToAppPath = (payload) => {
         const path = extractAppPath(payload);
         if (!path || typeof path !== "string") return;
-        router.replace(buildEmbeddedAppPath(getInternalAppPath(path)), undefined, { shallow: false, scroll: false });
+        syncPathFromBridge(path);
       };
+
+      const unsubscribeAll = app.subscribe((action) => {
+        const actionPath = extractPathFromAction(action);
+        if (!actionPath) return;
+        syncPathFromBridge(actionPath);
+      });
 
       const unsubscribeRedirect = app.subscribe(Redirect.Action.APP, ({ payload }) => {
         navigateToAppPath(payload);
@@ -216,6 +247,7 @@ function MyApp({ Component, pageProps }) {
       });
 
       return () => {
+        unsubscribeAll?.();
         unsubscribeRedirect?.();
         unsubscribeHistoryPush?.();
         unsubscribeHistoryReplace?.();
