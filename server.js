@@ -1,6 +1,7 @@
 const http = require("http");
 const next = require("next");
 const { parse } = require("url");
+const { bootstrapDatabase } = require("./lib/bootstrap-db");
 const { startLoyaltyAwardsScheduler } = require("./lib/loyalty-awards-scheduler");
 
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -69,7 +70,8 @@ function buildAppUrl(pathname, query) {
   return qs ? `${pathname}?${qs}` : pathname;
 }
 
-app.prepare().then(() => {
+app.prepare().then(async () => {
+  await bootstrapDatabase();
   startLoyaltyAwardsScheduler();
 
   http

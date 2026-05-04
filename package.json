@@ -7,6 +7,7 @@
     "deploy:release": "shopify app deploy --config shopify.app.toml --allow-updates --verbose",
     "dev:release": "npm run deploy:release && shopify app dev --config shopify.app.toml --verbose",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "db:init": "node scripts/db-init.js",
     "dev": "node server.js",
     "build": "next build",
     "start": "node server.js"

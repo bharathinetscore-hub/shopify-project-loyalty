@@ -15,6 +15,63 @@ function isLikelyHostParam(value) {
   return /^[A-Za-z0-9+/=_-]+$/.test(String(value));
 }
 
+function getEmbeddedContext() {
+  if (typeof window === "undefined") {
+    return { host: "", shop: "" };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const shop = params.get("shop") || window.localStorage.getItem("shopify-shop-domain") || "";
+  const scopedHostKey = shop ? `shopify-app-host:${shop}` : "";
+  const host =
+    params.get("host") ||
+    (scopedHostKey ? window.localStorage.getItem(scopedHostKey) || "" : "") ||
+    window.localStorage.getItem("shopify-app-host") ||
+    "";
+
+  return {
+    host: isLikelyHostParam(host) ? host : "",
+    shop,
+  };
+}
+
+function buildEmbeddedAppPath(rawPath) {
+  if (!rawPath || typeof rawPath !== "string") return "";
+
+  const { host, shop } = getEmbeddedContext();
+  const normalized = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+  const [pathnameWithQuery, hash = ""] = normalized.split("#");
+  const [pathname, query = ""] = pathnameWithQuery.split("?");
+  const params = new URLSearchParams(query);
+
+  if (host && !params.has("host")) params.set("host", host);
+  if (shop && !params.has("shop")) params.set("shop", shop);
+
+  const nextQuery = params.toString();
+  return `${pathname}${nextQuery ? `?${nextQuery}` : ""}${hash ? `#${hash}` : ""}`;
+}
+
+function extractAppPath(payload) {
+  const candidates = [
+    payload?.path,
+    payload?.destination?.path,
+    payload?.destination,
+    payload?.url,
+  ];
+
+  const rawPath = candidates.find((value) => typeof value === "string" && value.trim());
+  if (!rawPath) return "";
+
+  try {
+    if (/^https?:\/\//i.test(rawPath)) {
+      const url = new URL(rawPath);
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {}
+
+  return rawPath;
+}
+
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
   const [config, setConfig] = useState(null);
@@ -80,7 +137,7 @@ function MyApp({ Component, pageProps }) {
       }
 
       lastPath = nextPath;
-      router.replace(nextPath);
+      router.replace(buildEmbeddedAppPath(nextPath), undefined, { shallow: false, scroll: false });
     };
 
     const pollId = window.setInterval(syncExternalRouteChange, 200);
@@ -118,9 +175,9 @@ function MyApp({ Component, pageProps }) {
       NavigationMenu.create(app, { items });
 
       const navigateToAppPath = (payload) => {
-        const path = payload?.path || payload?.destination?.path || payload?.destination || "";
+        const path = extractAppPath(payload);
         if (!path || typeof path !== "string") return;
-        router.replace(path);
+        router.push(buildEmbeddedAppPath(path), undefined, { shallow: false, scroll: false });
       };
 
       const unsubscribeRedirect = app.subscribe(Redirect.Action.APP, ({ payload }) => {
@@ -167,7 +224,7 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <AppProvider>
-      <Component {...pageProps} />
+      <Component key={router.asPath} {...pageProps} />
     </AppProvider>
   );
 }
