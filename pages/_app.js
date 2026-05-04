@@ -8,6 +8,14 @@ import * as Redirect from "@shopify/app-bridge/actions/Navigation/Redirect";
 import "@shopify/polaris/build/esm/styles.css";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import DashboardPage from "./dashboard";
+import LoyaltyConfigPage from "./loyalty-config";
+import LoyaltyCustomersPage from "./loyalty-customers";
+import LoyaltyEmailTemplatePage from "./loyalty-email-template";
+import LoyaltyEventsPage from "./loyalty-events";
+import LoyaltyFeaturesPage from "./loyalty-features";
+import LoyaltyGiftcardGeneratedPage from "./loyalty-giftcard-generated";
+import LoyaltyItemsPage from "./loyalty-items";
 
 function isLikelyHostParam(value) {
   if (!value) return false;
@@ -90,6 +98,7 @@ function MyApp({ Component, pageProps }) {
   const [hostMissing, setHostMissing] = useState(false);
   const [shopDomain, setShopDomain] = useState("");
   const [shopMissing, setShopMissing] = useState(false);
+  const [browserPath, setBrowserPath] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -143,6 +152,7 @@ function MyApp({ Component, pageProps }) {
       const externalPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
       const nextPath = buildEmbeddedAppPath(getInternalAppPath(externalPath));
       const routerPath = router.asPath || "";
+      setBrowserPath(externalPath);
 
       if (externalPath === lastPath || nextPath === routerPath) {
         lastPath = externalPath;
@@ -235,9 +245,22 @@ function MyApp({ Component, pageProps }) {
     );
   }
 
+  const effectivePath = getInternalAppPath(browserPath || router.asPath || "");
+  const effectivePathname = effectivePath.split("?")[0].split("#")[0];
+
+  let ResolvedComponent = Component;
+  if (effectivePathname === "/dashboard") ResolvedComponent = DashboardPage;
+  else if (effectivePathname === "/loyalty-config") ResolvedComponent = LoyaltyConfigPage;
+  else if (effectivePathname === "/loyalty-customers") ResolvedComponent = LoyaltyCustomersPage;
+  else if (effectivePathname === "/loyalty-email-template") ResolvedComponent = LoyaltyEmailTemplatePage;
+  else if (effectivePathname === "/loyalty-events") ResolvedComponent = LoyaltyEventsPage;
+  else if (effectivePathname === "/loyalty-features") ResolvedComponent = LoyaltyFeaturesPage;
+  else if (effectivePathname === "/loyalty-giftcard-generated") ResolvedComponent = LoyaltyGiftcardGeneratedPage;
+  else if (effectivePathname === "/loyalty-items") ResolvedComponent = LoyaltyItemsPage;
+
   return (
     <AppProvider>
-      <Component key={router.asPath} {...pageProps} />
+      <ResolvedComponent key={effectivePath || router.asPath} {...pageProps} />
     </AppProvider>
   );
 }
